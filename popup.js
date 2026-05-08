@@ -108,8 +108,7 @@ async function renderReadingList() {
     const openBtn = document.createElement('button');
     openBtn.className = 'rl-btn rl-open';
     openBtn.type = 'button';
-    openBtn.textContent = t('overlayMode') === 'Overlay' ? 'Open' : t('overlayMode');
-    openBtn.textContent = 'Open';
+    openBtn.textContent = t('openLabel');
     openBtn.addEventListener('click', () => {
       browser.tabs.create({ url: item.url });
     });
@@ -284,7 +283,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         const payload = { action: 'start', wpm, source };
         if (source === 'custom') {
           payload.text = customText.value.trim();
-          if (!payload.text) return;
+          if (!payload.text) {
+            showStatus(t('customTextEmpty'), 'error');
+            return;
+          }
         }
         await browser.tabs.sendMessage(activeTab.id, payload);
         window.close();

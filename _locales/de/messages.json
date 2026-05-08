@@ -49,5 +49,7 @@
   "miniStopLabel":          { "message": "Stop" },
   "miniPauseLabel":         { "message": "Pause" },
   "miniResumeLabel":        { "message": "Fortsetzen" },
-  "timeRemainingShort":     { "message": "< 1 min" }
+  "timeRemainingShort":     { "message": "< 1 min" },
+  "openLabel":              { "message": "Öffnen" },
+  "customTextEmpty":        { "message": "Bitte zuerst einen Text eingeben." }
 }

@@ -57,9 +57,9 @@ browser.runtime.onMessage.addListener((message, _sender, sendResponse) => {
       break;
 
     case 'start':
-      startSession(message.wpm, message.source, message.text).then(() => {
-        sendResponse({ ok: true });
-      });
+      startSession(message.wpm, message.source, message.text)
+        .then(() => sendResponse({ ok: true }))
+        .catch(() => sendResponse({ ok: false }));
       break;
 
     case 'pause':
@@ -176,12 +176,16 @@ function extractWordsWithPositions(root) {
 // Position persistence (per-URL map)
 // ---------------------------------------------------------------------------
 
+function pageKey() {
+  return location.origin + location.pathname;
+}
+
 async function savePosition() {
   if (WR.wordIndex <= 0 || WR.words.length === 0) return;
   try {
     const data = await browser.storage.local.get('readPositions');
     const map = data.readPositions || {};
-    map[location.href] = { wordIndex: WR.wordIndex, ts: Date.now() };
+    map[pageKey()] = { wordIndex: WR.wordIndex, ts: Date.now() };
     // Keep at most 50 entries — evict oldest
     const keys = Object.keys(map);
     if (keys.length > 50) {
@@ -195,7 +199,7 @@ async function savePosition() {
 async function restorePosition(words) {
   try {
     const data = await browser.storage.local.get('readPositions');
-    const saved = (data.readPositions || {})[location.href];
+    const saved = (data.readPositions || {})[pageKey()];
     if (saved && saved.wordIndex > 0 && saved.wordIndex < words.length) {
       return saved.wordIndex;
     }
@@ -207,7 +211,7 @@ async function clearSavedPosition() {
   try {
     const data = await browser.storage.local.get('readPositions');
     const map = data.readPositions || {};
-    delete map[location.href];
+    delete map[pageKey()];
     await browser.storage.local.set({ readPositions: map });
   } catch { /* storage unavailable */ }
 }
@@ -687,7 +691,7 @@ function tick() {
 
   if (WR.lastTickTime !== null) {
     const drift = (now - WR.lastTickTime) - WR.lastScheduledDuration;
-    nextDelay = Math.max(0, wordDuration - drift);
+    nextDelay = Math.max(16, wordDuration - drift);
   }
 
   WR.lastTickTime           = now;
@@ -885,10 +889,20 @@ function handleKeyDown(e) {
     stopSession();
   } else if (e.code === 'ArrowRight' && WR.active) {
     e.preventDefault();
-    WR.wordIndex = Math.min(WR.wordIndex + 9, WR.words.length - 1);
+    WR.wordIndex = Math.min(WR.wordIndex + 10, WR.words.length - 1);
   } else if (e.code === 'ArrowLeft' && WR.active) {
     e.preventDefault();
-    WR.wordIndex = Math.max(0, WR.wordIndex - 11);
+    WR.wordIndex = Math.max(0, WR.wordIndex - 10);
+  } else if (e.code === 'Tab' && WR.shadowRoot && WR.active) {
+    e.preventDefault();
+    const focusables = Array.from(
+      WR.shadowRoot.querySelectorAll('.wr-btn, .wr-wpm-slider')
+    );
+    const idx = focusables.indexOf(WR.shadowRoot.activeElement);
+    const next = e.shiftKey
+      ? focusables[idx - 1] ?? focusables[focusables.length - 1]
+      : focusables[idx + 1] ?? focusables[0];
+    next?.focus();
   }
 }
 

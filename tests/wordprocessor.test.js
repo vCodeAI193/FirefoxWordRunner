@@ -206,6 +206,11 @@ describe('getWordDuration', () => {
     expect(getWordDuration('end.', BASE)).toBeGreaterThan(getWordDuration('word,', BASE));
   });
 
+  test('word ending with Unicode ellipsis … adds 0.6× extra', () => {
+    // 'Ende…' → letters='Ende' (4) → m=1.0, sentenceEnd → +0.6 → 1.6
+    expect(getWordDuration('Ende…', BASE)).toBe(Math.round(BASE * 1.6));
+  });
+
   test('result is always at least 50ms', () => {
     expect(getWordDuration('a', 10)).toBe(50);
     expect(getWordDuration('hi', 1)).toBe(50);
