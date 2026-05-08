@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Word Runner</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <header>
+    <img src="icons/icon-48.svg" alt="" class="logo" aria-hidden="true">
+    <h1>Word Runner</h1>
+  </header>
+
+  <main>
+    <section class="source-section" aria-labelledby="source-label">
+      <p id="source-label" class="section-label">Text Source</p>
+      <div class="radio-group" role="radiogroup" aria-labelledby="source-label">
+        <label class="radio-label">
+          <input type="radio" name="source" value="selection" id="radio-selection">
+          <span class="radio-custom"></span>
+          Selected text
+        </label>
+        <label class="radio-label">
+          <input type="radio" name="source" value="page" id="radio-page" checked>
+          <span class="radio-custom"></span>
+          Full page
+        </label>
+      </div>
+    </section>
+
+    <section class="speed-section" aria-labelledby="speed-label">
+      <div class="speed-header">
+        <label for="wpm-slider" id="speed-label" class="section-label">Reading Speed</label>
+        <output id="wpm-display" for="wpm-slider">300</output>
+        <span class="wpm-unit">WPM</span>
+      </div>
+      <input type="range" id="wpm-slider"
+             min="100" max="1000" step="25" value="300"
+             aria-valuemin="100" aria-valuemax="1000" aria-valuenow="300">
+      <div class="speed-labels" aria-hidden="true">
+        <span>Slow</span>
+        <span>Fast</span>
+      </div>
+    </section>
+
+    <div id="status-bar" class="status-bar hidden" role="status" aria-live="polite"></div>
+
+    <button id="start-btn" class="start-btn" type="button">
+      Start Reading
+    </button>
+  </main>
+
+  <script src="popup.js"></script>
+</body>
+</html>

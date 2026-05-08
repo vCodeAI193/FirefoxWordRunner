@@ -1,0 +1,43 @@
+{
+  "manifest_version": 2,
+  "name": "Word Runner",
+  "version": "1.0.0",
+  "description": "RSVP speed reading: one word at a time, read faster.",
+
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "wordrunner@extension",
+      "strict_min_version": "78.0"
+    }
+  },
+
+  "icons": {
+    "48": "icons/icon-48.svg",
+    "96": "icons/icon-96.svg"
+  },
+
+  "browser_action": {
+    "default_icon": {
+      "48": "icons/icon-48.svg",
+      "96": "icons/icon-96.svg"
+    },
+    "default_popup": "popup.html",
+    "default_title": "Word Runner"
+  },
+
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content.js"],
+      "css": ["content.css"],
+      "run_at": "document_idle"
+    }
+  ],
+
+  "permissions": [
+    "activeTab",
+    "storage"
+  ],
+
+  "content_security_policy": "script-src 'self'; object-src 'self'"
+}
