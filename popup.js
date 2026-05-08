@@ -1,84 +1,51 @@
 /* global browser */
 
-document.addEventListener('DOMContentLoaded', async () => {
-  const slider = document.getElementById('wpm-slider');
-  const wpmDisplay = document.getElementById('wpm-display');
-  const startBtn = document.getElementById('start-btn');
-  const statusBar = document.getElementById('status-bar');
-  const radioPage = document.getElementById('radio-page');
-  const radioSelection = document.getElementById('radio-selection');
+// ---------------------------------------------------------------------------
+// i18n helpers
+// ---------------------------------------------------------------------------
 
-  // Restore saved WPM
-  const stored = await browser.storage.local.get('wpm');
-  const savedWpm = stored.wpm || 300;
-  slider.value = savedWpm;
-  wpmDisplay.textContent = savedWpm;
-  slider.setAttribute('aria-valuenow', savedWpm);
+function t(key) {
+  return browser.i18n.getMessage(key) || key;
+}
 
-  slider.addEventListener('input', () => {
-    const val = parseInt(slider.value, 10);
-    wpmDisplay.textContent = val;
-    slider.setAttribute('aria-valuenow', val);
-    browser.storage.local.set({ wpm: val });
+function applyI18n() {
+  document.querySelectorAll('[data-i18n]').forEach(el => {
+    const msg = t(el.getAttribute('data-i18n'));
+    if (msg) el.textContent = msg;
   });
+  document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
+    const msg = t(el.getAttribute('data-i18n-placeholder'));
+    if (msg) el.placeholder = msg;
+  });
+  // Localise <option> elements
+  document.querySelectorAll('option[data-i18n]').forEach(el => {
+    const msg = t(el.getAttribute('data-i18n'));
+    if (msg) el.textContent = msg;
+  });
+}
 
-  // Query active tab and ping content script
-  let currentState = null;
-  let activeTab = null;
+// ---------------------------------------------------------------------------
+// Stats display
+// ---------------------------------------------------------------------------
 
-  try {
-    const tabs = await browser.tabs.query({ active: true, currentWindow: true });
-    activeTab = tabs[0];
-    currentState = await browser.tabs.sendMessage(activeTab.id, { action: 'ping' });
-  } catch {
-    showStatus('Cannot run on this page type.', 'error');
-    startBtn.disabled = true;
+function displayStats(stats) {
+  const el = document.getElementById('stats-content');
+  if (!stats || !stats.sessions) {
+    el.textContent = t('statsEmpty');
     return;
   }
-
-  updateUI(currentState);
-
-  startBtn.addEventListener('click', async () => {
-    if (!activeTab) return;
-
-    const wpmVal = parseInt(slider.value, 10);
-    const source = radioSelection.checked ? 'selection' : 'page';
-
-    try {
-      if (currentState && currentState.active) {
-        if (currentState.paused) {
-          currentState = await browser.tabs.sendMessage(activeTab.id, { action: 'resume' });
-        } else {
-          currentState = await browser.tabs.sendMessage(activeTab.id, { action: 'pause' });
-        }
-        updateUI(currentState);
-      } else {
-        await browser.tabs.sendMessage(activeTab.id, { action: 'start', wpm: wpmVal, source });
-        window.close();
-      }
-    } catch {
-      showStatus('Lost connection to the page. Please reload.', 'error');
-    }
-  });
-});
-
-function updateUI(state) {
-  const startBtn = document.getElementById('start-btn');
-
-  if (!state || !state.active) {
-    startBtn.textContent = 'Start Reading';
-    startBtn.classList.remove('running');
-    hideStatus();
-  } else if (state.paused) {
-    startBtn.textContent = 'Resume';
-    startBtn.classList.add('running');
-    showStatus(`Paused at word ${state.wordIndex} of ${state.totalWords}`);
-  } else {
-    startBtn.textContent = 'Pause';
-    startBtn.classList.add('running');
-    showStatus(`Reading: ${state.wordIndex} / ${state.totalWords} words`);
-  }
+  const avgWpm = stats.totalMs > 0
+    ? Math.round(stats.totalWords / (stats.totalMs / 60000))
+    : 0;
+  el.textContent =
+    `${stats.totalWords.toLocaleString()} ${t('wordsReadLabel')} · ` +
+    `${stats.sessions} ${t('sessionsLabel')} · ` +
+    `Ø ${avgWpm} WPM`;
 }
+
+// ---------------------------------------------------------------------------
+// Status bar helpers
+// ---------------------------------------------------------------------------
 
 function showStatus(msg, type = 'info') {
   const bar = document.getElementById('status-bar');
@@ -90,3 +57,153 @@ function showStatus(msg, type = 'info') {
 function hideStatus() {
   document.getElementById('status-bar').classList.add('hidden');
 }
+
+// ---------------------------------------------------------------------------
+// UI sync from session state
+// ---------------------------------------------------------------------------
+
+function updateUI(state) {
+  const btn = document.getElementById('start-btn');
+  if (!state || !state.active) {
+    btn.textContent = t('startReading');
+    btn.classList.remove('running');
+    hideStatus();
+  } else if (state.paused) {
+    btn.textContent = t('resumeReading');
+    btn.classList.add('running');
+    showStatus(`${t('pauseReading')}: ${state.wordIndex} / ${state.totalWords}`);
+  } else {
+    btn.textContent = t('pauseReading');
+    btn.classList.add('running');
+    showStatus(`${state.wordIndex} / ${state.totalWords}`);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Main
+// ---------------------------------------------------------------------------
+
+document.addEventListener('DOMContentLoaded', async () => {
+  applyI18n();
+
+  // Element refs
+  const slider        = document.getElementById('wpm-slider');
+  const wpmDisplay    = document.getElementById('wpm-display');
+  const startBtn      = document.getElementById('start-btn');
+  const radioPage     = document.getElementById('radio-page');
+  const radioCustom   = document.getElementById('radio-custom');
+  const customSection = document.getElementById('custom-text-section');
+  const customText    = document.getElementById('custom-text');
+  const fontSlider    = document.getElementById('font-size-slider');
+  const fontDisplay   = document.getElementById('font-size-display');
+  const themeSelect   = document.getElementById('theme-select');
+  const orpColor      = document.getElementById('orp-color');
+  const statsContent  = document.getElementById('stats-content');
+
+  // ── Load saved settings ──
+  const data = await browser.storage.local.get([
+    'wpm', 'wordsPerChunk', 'displayMode', 'fontSize', 'theme', 'orpColor', 'stats',
+  ]);
+
+  const savedWpm = data.wpm || 300;
+  slider.value = savedWpm;
+  wpmDisplay.textContent = savedWpm;
+  slider.setAttribute('aria-valuenow', savedWpm);
+
+  if (data.wordsPerChunk === 2) {
+    document.getElementById('radio-two-words').checked = true;
+  }
+  if (data.displayMode === 'highlight') {
+    document.getElementById('radio-highlight').checked = true;
+  }
+  if (data.fontSize) {
+    fontSlider.value = data.fontSize;
+    fontDisplay.textContent = data.fontSize;
+  }
+  if (data.theme) themeSelect.value = data.theme;
+  if (data.orpColor) orpColor.value = data.orpColor;
+
+  displayStats(data.stats);
+
+  // ── Persist settings on change ──
+  slider.addEventListener('input', () => {
+    const val = parseInt(slider.value, 10);
+    wpmDisplay.textContent = val;
+    slider.setAttribute('aria-valuenow', val);
+    browser.storage.local.set({ wpm: val });
+  });
+
+  fontSlider.addEventListener('input', () => {
+    const val = parseInt(fontSlider.value, 10);
+    fontDisplay.textContent = val;
+    browser.storage.local.set({ fontSize: val });
+  });
+
+  themeSelect.addEventListener('change', () => {
+    browser.storage.local.set({ theme: themeSelect.value });
+  });
+
+  orpColor.addEventListener('input', () => {
+    browser.storage.local.set({ orpColor: orpColor.value });
+  });
+
+  document.querySelectorAll('input[name="displayMode"]').forEach(r => {
+    r.addEventListener('change', () => browser.storage.local.set({ displayMode: r.value }));
+  });
+
+  document.querySelectorAll('input[name="wordsPerChunk"]').forEach(r => {
+    r.addEventListener('change', () => browser.storage.local.set({ wordsPerChunk: parseInt(r.value, 10) }));
+  });
+
+  // ── Custom text textarea visibility ──
+  document.querySelectorAll('input[name="source"]').forEach(r => {
+    r.addEventListener('change', () => {
+      customSection.classList.toggle('hidden', !radioCustom.checked);
+    });
+  });
+
+  // ── Ping content script ──
+  let currentState = null;
+  let activeTab = null;
+
+  try {
+    const tabs = await browser.tabs.query({ active: true, currentWindow: true });
+    activeTab = tabs[0];
+    currentState = await browser.tabs.sendMessage(activeTab.id, { action: 'ping' });
+  } catch {
+    showStatus(t('errorPage'), 'error');
+    startBtn.disabled = true;
+    return;
+  }
+
+  updateUI(currentState);
+
+  // ── Start / pause / resume ──
+  startBtn.addEventListener('click', async () => {
+    if (!activeTab) return;
+
+    const wpm = parseInt(slider.value, 10);
+    const source = document.querySelector('input[name="source"]:checked').value;
+
+    try {
+      if (currentState && currentState.active) {
+        if (currentState.paused) {
+          currentState = await browser.tabs.sendMessage(activeTab.id, { action: 'resume' });
+        } else {
+          currentState = await browser.tabs.sendMessage(activeTab.id, { action: 'pause' });
+        }
+        updateUI(currentState);
+      } else {
+        const payload = { action: 'start', wpm, source };
+        if (source === 'custom') {
+          payload.text = customText.value.trim();
+          if (!payload.text) return; // nothing to read
+        }
+        await browser.tabs.sendMessage(activeTab.id, payload);
+        window.close();
+      }
+    } catch {
+      showStatus(t('errorPage'), 'error');
+    }
+  });
+});

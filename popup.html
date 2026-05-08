@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="de">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -13,25 +13,35 @@
   </header>
 
   <main>
+    <!-- Text Source -->
     <section class="source-section" aria-labelledby="source-label">
-      <p id="source-label" class="section-label">Text Source</p>
+      <p id="source-label" class="section-label" data-i18n="textSourceLabel"></p>
       <div class="radio-group" role="radiogroup" aria-labelledby="source-label">
         <label class="radio-label">
           <input type="radio" name="source" value="selection" id="radio-selection">
           <span class="radio-custom"></span>
-          Selected text
+          <span data-i18n="selectedText"></span>
         </label>
         <label class="radio-label">
           <input type="radio" name="source" value="page" id="radio-page" checked>
           <span class="radio-custom"></span>
-          Full page
+          <span data-i18n="fullPage"></span>
         </label>
+        <label class="radio-label">
+          <input type="radio" name="source" value="custom" id="radio-custom">
+          <span class="radio-custom"></span>
+          <span data-i18n="customText"></span>
+        </label>
+      </div>
+      <div id="custom-text-section" class="custom-text-section hidden">
+        <textarea id="custom-text" rows="4" data-i18n-placeholder="customTextPlaceholder"></textarea>
       </div>
     </section>
 
+    <!-- Reading Speed -->
     <section class="speed-section" aria-labelledby="speed-label">
       <div class="speed-header">
-        <label for="wpm-slider" id="speed-label" class="section-label">Reading Speed</label>
+        <label for="wpm-slider" id="speed-label" class="section-label" data-i18n="readingSpeedLabel"></label>
         <output id="wpm-display" for="wpm-slider">300</output>
         <span class="wpm-unit">WPM</span>
       </div>
@@ -39,16 +49,86 @@
              min="100" max="1000" step="25" value="300"
              aria-valuemin="100" aria-valuemax="1000" aria-valuenow="300">
       <div class="speed-labels" aria-hidden="true">
-        <span>Slow</span>
-        <span>Fast</span>
+        <span data-i18n="slowLabel"></span>
+        <span data-i18n="fastLabel"></span>
       </div>
     </section>
 
+    <!-- Status bar -->
     <div id="status-bar" class="status-bar hidden" role="status" aria-live="polite"></div>
 
-    <button id="start-btn" class="start-btn" type="button">
-      Start Reading
-    </button>
+    <!-- Start button -->
+    <button id="start-btn" class="start-btn" type="button" data-i18n="startReading"></button>
+
+    <!-- Advanced settings -->
+    <details class="collapsible-section" id="advanced-details">
+      <summary class="collapsible-summary" data-i18n="advancedLabel"></summary>
+      <div class="collapsible-content">
+
+        <!-- Display mode -->
+        <div class="setting-row">
+          <span class="setting-label" data-i18n="displayModeLabel"></span>
+          <div class="toggle-group" role="radiogroup">
+            <label class="toggle-label">
+              <input type="radio" name="displayMode" value="overlay" id="radio-overlay" checked>
+              <span data-i18n="overlayMode"></span>
+            </label>
+            <label class="toggle-label">
+              <input type="radio" name="displayMode" value="highlight" id="radio-highlight">
+              <span data-i18n="highlightMode"></span>
+            </label>
+          </div>
+        </div>
+
+        <!-- Words per chunk -->
+        <div class="setting-row">
+          <span class="setting-label" data-i18n="wordsPerChunkLabel"></span>
+          <div class="toggle-group" role="radiogroup">
+            <label class="toggle-label">
+              <input type="radio" name="wordsPerChunk" value="1" id="radio-one-word" checked>
+              <span data-i18n="oneWord"></span>
+            </label>
+            <label class="toggle-label">
+              <input type="radio" name="wordsPerChunk" value="2" id="radio-two-words">
+              <span data-i18n="twoWords"></span>
+            </label>
+          </div>
+        </div>
+
+        <!-- Font size -->
+        <div class="setting-row setting-row--col">
+          <div class="setting-row-header">
+            <label for="font-size-slider" class="setting-label" data-i18n="fontSizeLabel"></label>
+            <output id="font-size-display" for="font-size-slider">48</output>
+            <span class="wpm-unit">px</span>
+          </div>
+          <input type="range" id="font-size-slider" min="24" max="96" step="4" value="48">
+        </div>
+
+        <!-- Theme -->
+        <div class="setting-row">
+          <label for="theme-select" class="setting-label" data-i18n="themeLabel"></label>
+          <select id="theme-select" class="select-input">
+            <option value="dark" data-i18n="themeDark"></option>
+            <option value="light" data-i18n="themeLight"></option>
+          </select>
+        </div>
+
+        <!-- ORP Color -->
+        <div class="setting-row">
+          <label for="orp-color" class="setting-label" data-i18n="orpColorLabel"></label>
+          <input type="color" id="orp-color" value="#ef5350" class="color-input">
+        </div>
+
+      </div>
+    </details>
+
+    <!-- Statistics -->
+    <details class="collapsible-section" id="stats-details">
+      <summary class="collapsible-summary" data-i18n="statsLabel"></summary>
+      <p id="stats-content" class="stats-content"></p>
+    </details>
+
   </main>
 
   <script src="popup.js"></script>

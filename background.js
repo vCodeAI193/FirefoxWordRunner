@@ -3,7 +3,7 @@
 browser.runtime.onInstalled.addListener(() => {
   browser.contextMenus.create({
     id: 'wr-read-selection',
-    title: 'Mit Word Runner lesen',
+    title: browser.i18n.getMessage('contextMenuLabel'),
     contexts: ['selection'],
   });
 });
@@ -14,6 +14,6 @@ browser.contextMenus.onClicked.addListener(async (info, tab) => {
   try {
     await browser.tabs.sendMessage(tab.id, { action: 'start', wpm, source: 'selection' });
   } catch {
-    // Content script unavailable on this page type (about:, PDF, etc.)
+    // Content script unavailable on this page type
   }
 });
