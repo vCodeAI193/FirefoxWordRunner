@@ -1,4 +1,6 @@
-/* global browser */
+/* global browser, processWords, getOrpOffset, splitAtOrp, getWordDuration */
+// Pure functions (processWords, getOrpOffset, splitAtOrp, getWordDuration)
+// are loaded from lib/wordprocessor.js which is injected before this script.
 
 // ---------------------------------------------------------------------------
 // State
@@ -13,6 +15,7 @@ const WR = {
   intervalMs: 200,
   timeoutId: null,
   lastTickTime: null,
+  lastScheduledDuration: 200,
   shadowHost: null,
   shadowRoot: null,
 };
@@ -33,8 +36,9 @@ browser.runtime.onMessage.addListener((message, _sender, sendResponse) => {
       break;
 
     case 'start':
-      startSession(message.wpm, message.source);
-      sendResponse({ ok: true });
+      startSession(message.wpm, message.source).then(() => {
+        sendResponse({ ok: true });
+      });
       break;
 
     case 'pause':
@@ -128,65 +132,36 @@ function extractFromElement(root) {
 }
 
 // ---------------------------------------------------------------------------
-// Word processing
+// Position persistence
 // ---------------------------------------------------------------------------
 
-function processWords(text) {
-  const raw = text
-    .replace(/\s+/g, ' ')
-    .replace(/ /g, ' ')
-    .replace(/​/g, '')
-    .trim();
-
-  return raw
-    .split(' ')
-    .filter(t => t.length > 0)
-    .map(token => (token.length > 25 ? token.slice(0, 22) + '...' : token));
+function savePosition() {
+  if (WR.wordIndex > 0 && WR.words.length > 0) {
+    browser.storage.local.set({
+      lastPos: { url: location.href, wordIndex: WR.wordIndex },
+    });
+  }
 }
 
-// ---------------------------------------------------------------------------
-// ORP (Optimal Recognition Point)
-// ---------------------------------------------------------------------------
-
-function getOrpOffset(word) {
-  const letters = word.replace(/^\W+|\W+$/g, '');
-  const len = letters.length;
-  if (len <= 1) return 0;
-  if (len <= 5) return 1;
-  if (len <= 9) return 2;
-  if (len <= 13) return 3;
-  return 4;
+function clearSavedPosition() {
+  browser.storage.local.remove('lastPos');
 }
 
-function splitAtOrp(word) {
-  let start = 0;
-  while (start < word.length && !/\w/.test(word[start])) start++;
-  const orp = start + getOrpOffset(word.slice(start));
-  return {
-    before: word.slice(0, orp),
-    focus: word.slice(orp, orp + 1),
-    after: word.slice(orp + 1),
-  };
-}
-
-// ---------------------------------------------------------------------------
-// Variable timing
-// ---------------------------------------------------------------------------
-
-function getWordDuration(word, baseMs) {
-  const len = word.replace(/[^a-zA-Z]/g, '').length;
-  const sentenceEnd = /[.!?](\s|$)/.test(word) || /[.!?]$/.test(word);
-  const comma = /,$/.test(word);
-
-  let m = 1.0;
-  if (len <= 2) m = 0.8;
-  else if (len >= 10) m = 1.4;
-  else if (len >= 7) m = 1.2;
-
-  if (sentenceEnd) m += 0.6;
-  else if (comma) m += 0.3;
-
-  return Math.max(50, Math.round(baseMs * m));
+async function restorePosition(words) {
+  try {
+    const { lastPos } = await browser.storage.local.get('lastPos');
+    if (
+      lastPos &&
+      lastPos.url === location.href &&
+      lastPos.wordIndex > 0 &&
+      lastPos.wordIndex < words.length
+    ) {
+      return lastPos.wordIndex;
+    }
+  } catch {
+    // storage unavailable
+  }
+  return 0;
 }
 
 // ---------------------------------------------------------------------------
@@ -318,9 +293,44 @@ const OVERLAY_CSS = `
   border-top: 1px solid rgba(255,255,255,0.08);
   justify-content: center;
   flex-shrink: 0;
+  flex-wrap: wrap;
 }
 
-.wr-wpm-info { font-size: 13px; color: rgba(255,255,255,0.45); min-width: 72px; }
+.wr-speed-control {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+}
+
+.wr-wpm-slider {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 120px;
+  height: 4px;
+  background: rgba(255,255,255,0.15);
+  border-radius: 2px;
+  outline: none;
+  cursor: pointer;
+}
+.wr-wpm-slider::-moz-range-thumb {
+  width: 14px;
+  height: 14px;
+  background: #4fc3f7;
+  border: none;
+  border-radius: 50%;
+  cursor: pointer;
+  transition: transform 0.1s;
+}
+.wr-wpm-slider:hover::-moz-range-thumb { transform: scale(1.2); }
+.wr-wpm-slider:focus-visible { outline: 2px solid #4fc3f7; outline-offset: 3px; }
+
+.wr-wpm-label {
+  font-size: 12px;
+  color: rgba(255,255,255,0.45);
+  font-variant-numeric: tabular-nums;
+}
+
 .wr-hint { font-size: 12px; color: rgba(255,255,255,0.3); }
 
 .wr-done-msg {
@@ -358,7 +368,6 @@ const OVERLAY_HTML = `
   </div>
 
   <div class="wr-controls">
-    <span class="wr-wpm-info"><span class="wr-wpm-val">300</span> WPM</span>
     <button class="wr-btn wr-play-pause-btn" aria-label="Pause (Space)">
       <svg class="icon-pause" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg">
         <path d="M5.5 3.5A1.5 1.5 0 0 1 7 5v6a1.5 1.5 0 0 1-3 0V5a1.5 1.5 0 0 1 1.5-1.5m5 0A1.5 1.5 0 0 1 12 5v6a1.5 1.5 0 0 1-3 0V5a1.5 1.5 0 0 1 1.5-1.5"/>
@@ -367,7 +376,11 @@ const OVERLAY_HTML = `
         <path d="m11.596 8.697-6.363 3.692c-.54.313-1.233-.066-1.233-.697V4.308c0-.63.692-1.01 1.233-.696l6.363 3.692a.802.802 0 0 1 0 1.393"/>
       </svg>
     </button>
-    <span class="wr-hint">Space: pause &nbsp;·&nbsp; Esc: stop &nbsp;·&nbsp; ← → skip</span>
+    <div class="wr-speed-control">
+      <input type="range" class="wr-wpm-slider" min="100" max="1000" step="25" value="300" aria-label="Reading speed">
+      <span class="wr-wpm-label"><span class="wr-wpm-val">300</span> WPM</span>
+    </div>
+    <span class="wr-hint">Space · Esc · ← →</span>
   </div>
 </div>
 `;
@@ -400,6 +413,14 @@ function buildOverlay() {
     if (WR.paused) resumeSession(); else pauseSession();
   });
   shadow.querySelector('.wr-stop-btn').addEventListener('click', stopSession);
+
+  shadow.querySelector('.wr-wpm-slider').addEventListener('input', e => {
+    const val = parseInt(e.target.value, 10);
+    shadow.querySelector('.wr-wpm-val').textContent = val;
+    WR.wpm = val;
+    WR.intervalMs = Math.round(60000 / val);
+    browser.storage.local.set({ wpm: val });
+  });
 }
 
 function showOverlay() {
@@ -492,16 +513,14 @@ function tick() {
 // Session lifecycle
 // ---------------------------------------------------------------------------
 
-function startSession(wpm, source) {
+async function startSession(wpm, source) {
   if (WR.active) stopSession();
 
   const rawText = extractText(source);
   const words = processWords(rawText);
-
   if (words.length === 0) return;
 
   WR.words = words;
-  WR.wordIndex = 0;
   WR.wpm = wpm;
   WR.intervalMs = Math.round(60000 / wpm);
   WR.active = true;
@@ -509,21 +528,25 @@ function startSession(wpm, source) {
   WR.lastTickTime = null;
   WR.lastScheduledDuration = WR.intervalMs;
 
+  // Restore reading position for full-page sessions
+  WR.wordIndex = source === 'page' ? await restorePosition(words) : 0;
+
   buildOverlay();
   showOverlay();
   attachKeyboard();
 
   if (WR.shadowRoot) {
     WR.shadowRoot.querySelector('.wr-wpm-val').textContent = wpm;
+    WR.shadowRoot.querySelector('.wr-wpm-slider').value = wpm;
   }
   updatePlayPauseIcon();
 
-  // Show first word, then start loop
   displayWord(WR.words[WR.wordIndex]);
+  const firstWord = WR.words[WR.wordIndex];
   WR.wordIndex++;
   updateProgress();
   WR.lastTickTime = Date.now();
-  WR.lastScheduledDuration = getWordDuration(WR.words[0], WR.intervalMs);
+  WR.lastScheduledDuration = getWordDuration(firstWord, WR.intervalMs);
   scheduleNext(WR.lastScheduledDuration);
 }
 
@@ -534,6 +557,7 @@ function pauseSession() {
   WR.timeoutId = null;
   WR.lastTickTime = null;
   updatePlayPauseIcon();
+  savePosition();
 }
 
 function resumeSession() {
@@ -545,6 +569,7 @@ function resumeSession() {
 }
 
 function stopSession() {
+  savePosition();
   WR.active = false;
   WR.paused = false;
   clearTimeout(WR.timeoutId);
@@ -557,6 +582,7 @@ function stopSession() {
 }
 
 function finishSession() {
+  clearSavedPosition();
   WR.active = false;
   WR.paused = false;
   clearTimeout(WR.timeoutId);
@@ -570,8 +596,7 @@ function finishSession() {
     WR.shadowRoot.querySelector('.wr-progress-text').textContent = `${WR.words.length} / ${WR.words.length}`;
   }
 
-  // Re-attach keyboard so Escape still closes the overlay
-  attachKeyboard();
+  attachKeyboard(); // keep Escape active to close overlay
 }
 
 // ---------------------------------------------------------------------------

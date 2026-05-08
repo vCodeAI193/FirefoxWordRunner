@@ -1,7 +1,7 @@
 {
   "manifest_version": 2,
   "name": "Word Runner",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "RSVP speed reading: one word at a time, read faster.",
 
   "browser_specific_settings": {
@@ -25,10 +25,15 @@
     "default_title": "Word Runner"
   },
 
+  "background": {
+    "scripts": ["background.js"],
+    "persistent": false
+  },
+
   "content_scripts": [
     {
       "matches": ["<all_urls>"],
-      "js": ["content.js"],
+      "js": ["lib/wordprocessor.js", "content.js"],
       "css": ["content.css"],
       "run_at": "document_idle"
     }
@@ -36,7 +41,8 @@
 
   "permissions": [
     "activeTab",
-    "storage"
+    "storage",
+    "contextMenus"
   ],
 
   "content_security_policy": "script-src 'self'; object-src 'self'"
