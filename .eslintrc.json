@@ -1,0 +1,30 @@
+{
+  "env": {
+    "browser": true,
+    "webextensions": true,
+    "es2020": true
+  },
+  "extends": ["eslint:recommended"],
+  "rules": {
+    "no-unused-vars": ["warn", { "argsIgnorePattern": "^_" }],
+    "no-console": "warn"
+  },
+  "ignorePatterns": ["node_modules/", "tests/"],
+  "overrides": [
+    {
+      "files": ["content.js"],
+      "globals": {
+        "processWords": "readonly",
+        "splitAtOrp": "readonly",
+        "getWordDuration": "readonly",
+        "estimateReadingMs": "readonly"
+      }
+    },
+    {
+      "files": ["lib/wordprocessor.js"],
+      "globals": {
+        "module": "writable"
+      }
+    }
+  ]
+}

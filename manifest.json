@@ -1,7 +1,7 @@
 {
   "manifest_version": 2,
   "name": "__MSG_extName__",
-  "version": "1.2.0",
+  "version": "1.3.0",
   "description": "__MSG_extDescription__",
   "default_locale": "de",
 
@@ -24,6 +24,13 @@
     },
     "default_popup": "popup.html",
     "default_title": "__MSG_extName__"
+  },
+
+  "commands": {
+    "start-reading": {
+      "suggested_key": { "default": "Alt+W" },
+      "description": "__MSG_commandStartReading__"
+    }
   },
 
   "background": {

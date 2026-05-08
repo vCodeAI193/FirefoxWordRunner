@@ -1,5 +1,5 @@
-/* global browser, processWords, getOrpOffset, splitAtOrp, getWordDuration */
-// Pure functions loaded from lib/wordprocessor.js (injected before this script).
+// Pure functions (processWords, splitAtOrp, getWordDuration, estimateReadingMs) loaded
+// from lib/wordprocessor.js, which is injected before this script.
 
 // ---------------------------------------------------------------------------
 // i18n shorthand
@@ -36,6 +36,9 @@ const WR = {
   wordPositions: null,      // Array<{ node, start, end }> | null
   highlightBox: null,
   highlightControls: null,
+
+  // Accessibility
+  previousFocus: null,
 };
 
 // ---------------------------------------------------------------------------
@@ -235,7 +238,7 @@ async function saveStats(wordsRead) {
 
 function formatTimeRemaining(wordsLeft, wpm) {
   if (wordsLeft <= 0 || wpm <= 0) return '';
-  const ms = (wordsLeft / wpm) * 60000 * 1.12; // 1.12 = avg variable-timing multiplier
+  const ms = estimateReadingMs(wordsLeft, wpm);
   if (ms < 60000) return t('timeRemainingShort') || '< 1 min';
   return `~${Math.ceil(ms / 60000)} min`;
 }
@@ -256,7 +259,7 @@ const OVERLAY_CSS = `
   backdrop-filter: blur(4px);
   display: flex;
   flex-direction: column;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  font-family: var(--wr-font-family, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif);
   color: var(--wr-text, #e8eaf6);
   user-select: none;
 }
@@ -395,6 +398,21 @@ const OVERLAY_CSS = `
   font-weight: 600;
   text-align: center;
 }
+
+@media (prefers-reduced-motion: reduce) {
+  .wr-word-display.animating { animation: none; }
+  .wr-progress-fill { transition: none; }
+  .wr-btn { transition: none; }
+}
+
+@media (forced-colors: active) {
+  .wr-overlay { background: Canvas; color: CanvasText; }
+  .wr-btn { border-color: ButtonText; color: ButtonText; }
+  .wr-btn:hover { background: Highlight; color: HighlightText; }
+  .wr-word-focus { color: Highlight; }
+  .wr-progress-fill { background: Highlight; }
+  .wr-done-msg { color: Highlight; }
+}
 `;
 
 // ---------------------------------------------------------------------------
@@ -453,6 +471,9 @@ function buildOverlay() {
 
   const host = document.createElement('div');
   host.id = 'word-runner-host';
+  host.setAttribute('role', 'dialog');
+  host.setAttribute('aria-modal', 'true');
+  host.setAttribute('aria-label', t('overlayAriaLabel'));
   document.body.appendChild(host);
 
   const shadow = host.attachShadow({ mode: 'closed' });
@@ -482,11 +503,18 @@ function buildOverlay() {
   });
 }
 
-function applyTheme(theme, orpColor, fontSize) {
+const FONT_FAMILY_MAP = {
+  serif:  '"Georgia", "Times New Roman", serif',
+  mono:   '"Courier New", "Courier", monospace',
+  system: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+};
+
+function applyTheme(theme, orpColor, fontSize, fontFamily) {
   const h = WR.shadowHost;
   if (!h) return;
   h.style.setProperty('--wr-font-size', `${fontSize}px`);
   h.style.setProperty('--wr-orp', orpColor);
+  h.style.setProperty('--wr-font-family', FONT_FAMILY_MAP[fontFamily] || FONT_FAMILY_MAP.system);
   if (theme === 'light') {
     h.style.setProperty('--wr-bg',          'rgba(255, 255, 248, 0.97)');
     h.style.setProperty('--wr-text',         '#1a1a2e');
@@ -674,15 +702,20 @@ function tick() {
 async function startSession(wpm, source, customText) {
   if (WR.active) stopSession();
 
+  // Save focus so we can restore it on close
+  WR.previousFocus = document.activeElement;
+
   // Load display settings from storage
   const settings = await browser.storage.local.get([
-    'wordsPerChunk', 'displayMode', 'fontSize', 'theme', 'orpColor',
+    'wordsPerChunk', 'displayMode', 'fontSize', 'fontFamily', 'theme', 'orpColor', 'skipShortWords',
   ]);
-  const wordsPerChunk = settings.wordsPerChunk || 1;
-  const displayMode   = settings.displayMode   || 'overlay';
-  const fontSize      = settings.fontSize      || 48;
-  const theme         = settings.theme         || 'dark';
-  const orpColor      = settings.orpColor      || '#ef5350';
+  const wordsPerChunk  = settings.wordsPerChunk || 1;
+  const displayMode    = settings.displayMode   || 'overlay';
+  const fontSize       = settings.fontSize      || 48;
+  const fontFamily     = settings.fontFamily    || 'system';
+  const theme          = settings.theme         || 'dark';
+  const orpColor       = settings.orpColor      || '#ef5350';
+  const skipShort      = !!settings.skipShortWords;
 
   // Extract words (+ position map for highlight mode on page content)
   let words, positions;
@@ -690,8 +723,17 @@ async function startSession(wpm, source, customText) {
     const result = extractWordsWithPositions(getContentRoot());
     words     = result.words;
     positions = result.positions;
+    if (skipShort) {
+      const filtered = words.reduce((acc, w, i) => {
+        if (w.replace(/\W/g, '').length > 2) acc.push({ w, pos: positions[i] });
+        return acc;
+      }, []);
+      words     = filtered.map(x => x.w);
+      positions = filtered.map(x => x.pos);
+    }
   } else {
-    words     = processWords(extractText(source, customText));
+    const raw = processWords(extractText(source, customText));
+    words     = skipShort ? raw.filter(w => w.replace(/\W/g, '').length > 2) : raw;
     positions = null;
   }
 
@@ -715,11 +757,13 @@ async function startSession(wpm, source, customText) {
     buildHighlightUI();
   } else {
     buildOverlay();
-    applyTheme(theme, orpColor, fontSize);
+    applyTheme(theme, orpColor, fontSize, fontFamily);
     showOverlay();
     if (WR.shadowRoot) {
       WR.shadowRoot.querySelector('.wr-wpm-val').textContent   = wpm;
       WR.shadowRoot.querySelector('.wr-wpm-slider').value      = wpm;
+      // Move focus into the overlay for keyboard accessibility
+      WR.shadowRoot.querySelector('.wr-play-pause-btn')?.focus();
     }
     updatePlayPauseIcon();
   }
@@ -783,6 +827,10 @@ function stopSession() {
     hideOverlay();
   }
   detachKeyboard();
+
+  // Restore focus to the element that was active before the overlay opened
+  WR.previousFocus?.focus();
+  WR.previousFocus = null;
 }
 
 function finishSession() {

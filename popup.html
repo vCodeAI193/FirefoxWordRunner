@@ -105,11 +105,21 @@
           <input type="range" id="font-size-slider" min="24" max="96" step="4" value="48">
         </div>
 
+        <!-- Font family -->
+        <div class="setting-row">
+          <label for="font-family-select" class="setting-label" data-i18n="fontFamilyLabel"></label>
+          <select id="font-family-select" class="select-input">
+            <option value="system" data-i18n="fontSystem"></option>
+            <option value="serif"  data-i18n="fontSerif"></option>
+            <option value="mono"   data-i18n="fontMono"></option>
+          </select>
+        </div>
+
         <!-- Theme -->
         <div class="setting-row">
           <label for="theme-select" class="setting-label" data-i18n="themeLabel"></label>
           <select id="theme-select" class="select-input">
-            <option value="dark" data-i18n="themeDark"></option>
+            <option value="dark"  data-i18n="themeDark"></option>
             <option value="light" data-i18n="themeLight"></option>
           </select>
         </div>
@@ -120,7 +130,23 @@
           <input type="color" id="orp-color" value="#ef5350" class="color-input">
         </div>
 
+        <!-- Skip short words -->
+        <div class="setting-row">
+          <label class="checkbox-label">
+            <input type="checkbox" id="skip-short-words">
+            <span class="checkbox-custom"></span>
+            <span data-i18n="skipShortWordsLabel"></span>
+          </label>
+        </div>
+
       </div>
+    </details>
+
+    <!-- Reading List -->
+    <details class="collapsible-section" id="reading-list-details">
+      <summary class="collapsible-summary" data-i18n="readingListLabel"></summary>
+      <div id="reading-list-items" class="reading-list-items"></div>
+      <button id="add-to-list-btn" class="add-btn" type="button" data-i18n="addToListLabel"></button>
     </details>
 
     <!-- Statistics -->

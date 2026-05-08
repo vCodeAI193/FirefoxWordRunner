@@ -1,4 +1,4 @@
-const { processWords, getOrpOffset, splitAtOrp, getWordDuration } = require('../lib/wordprocessor');
+const { processWords, getOrpOffset, splitAtOrp, getWordDuration, estimateReadingMs } = require('../lib/wordprocessor');
 
 // ---------------------------------------------------------------------------
 // processWords
@@ -220,5 +220,43 @@ describe('getWordDuration', () => {
     const low = getWordDuration('hello', 100);
     const high = getWordDuration('hello', 400);
     expect(high).toBeGreaterThan(low);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// estimateReadingMs
+// ---------------------------------------------------------------------------
+
+describe('estimateReadingMs', () => {
+  test('returns 0 for zero words', () => {
+    expect(estimateReadingMs(0, 300)).toBe(0);
+  });
+
+  test('returns 0 for zero wpm', () => {
+    expect(estimateReadingMs(100, 0)).toBe(0);
+  });
+
+  test('300 words at 300 wpm ≈ 67.2 seconds', () => {
+    // (300/300) * 60000 * 1.12 = 67200ms
+    expect(estimateReadingMs(300, 300)).toBeCloseTo(67200, 0);
+  });
+
+  test('600 words at 300 wpm is twice 300 words at 300 wpm', () => {
+    expect(estimateReadingMs(600, 300)).toBeCloseTo(estimateReadingMs(300, 300) * 2, 0);
+  });
+
+  test('same words, double wpm → half the time', () => {
+    const slow = estimateReadingMs(100, 200);
+    const fast = estimateReadingMs(100, 400);
+    expect(slow).toBeCloseTo(fast * 2, 0);
+  });
+
+  test('result is proportional to word count', () => {
+    const base = estimateReadingMs(10, 300);
+    expect(estimateReadingMs(50, 300)).toBeCloseTo(base * 5, 0);
+  });
+
+  test('returns a positive number for valid inputs', () => {
+    expect(estimateReadingMs(1, 100)).toBeGreaterThan(0);
   });
 });

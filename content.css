@@ -81,3 +81,29 @@
   outline: 2px solid #4fc3f7;
   outline-offset: 2px;
 }
+
+@media (prefers-reduced-motion: reduce) {
+  #wr-highlight-box { transition: none; }
+  .wr-mini-btn { transition: none; }
+}
+
+@media (forced-colors: active) {
+  #wr-highlight-box {
+    background: Highlight;
+    border-color: Highlight;
+  }
+  #wr-mini-controls {
+    background: Canvas;
+    color: CanvasText;
+    border: 1px solid CanvasText;
+  }
+  .wr-mini-btn {
+    border-color: ButtonText;
+    color: ButtonText;
+    background: ButtonFace;
+  }
+  .wr-mini-btn:hover {
+    background: Highlight;
+    color: HighlightText;
+  }
+}
