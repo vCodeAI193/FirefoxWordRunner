@@ -53,6 +53,14 @@ describe('processWords', () => {
     expect(processWords('hel​lo')).toEqual(['hello']);
   });
 
+  test('paragraph marker ¶ is preserved as a token', () => {
+    expect(processWords('¶')).toEqual(['¶']);
+  });
+
+  test('paragraph markers mixed with words are preserved', () => {
+    expect(processWords('hello ¶ world')).toEqual(['hello', '¶', 'world']);
+  });
+
   test('handles non-breaking spaces as word separators', () => {
     expect(processWords('hello world')).toEqual(['hello', 'world']);
   });
@@ -151,6 +159,10 @@ describe('splitAtOrp', () => {
       const { focus } = splitAtOrp(word);
       expect(focus.length).toBeLessThanOrEqual(1);
     });
+  });
+
+  test('empty string returns all empty parts', () => {
+    expect(splitAtOrp('')).toEqual({ before: '', focus: '', after: '' });
   });
 });
 

@@ -793,7 +793,8 @@ function renderChunkInOverlay(chunk) {
   WR.shadowRoot.querySelector('.wr-word-left').textContent  = before;
   WR.shadowRoot.querySelector('.wr-word-focus').textContent = focus;
   WR.shadowRoot.querySelector('.wr-word-right').textContent = after;
-  WR.shadowRoot.querySelector('.wr-word-two').textContent   = chunk[1] ? ' ' + chunk[1] : '';
+  const second = chunk[1] && chunk[1] !== '¶' ? chunk[1] : '';
+  WR.shadowRoot.querySelector('.wr-word-two').textContent   = second ? ' ' + second : '';
 
   const el = WR.shadowRoot.querySelector('.wr-word-display');
   el.classList.remove('animating');
@@ -901,7 +902,10 @@ async function startSession(wpm, source, customText) {
     positions = null;
   }
 
-  if (words.length === 0) return;
+  if (words.length === 0) {
+    showPageToast(t('noWordsFound'));
+    return;
+  }
 
   WR.words            = words;
   WR.wordPositions    = positions;
@@ -933,6 +937,8 @@ async function startSession(wpm, source, customText) {
     }
   } else {
     buildOverlay();
+    // Remove done-message from a previous finished session
+    WR.shadowRoot?.querySelector('.wr-done-msg')?.remove();
     applyTheme(theme, orpColor, fontSize, fontFamily);
     showOverlay();
     if (WR.shadowRoot) {
@@ -1034,8 +1040,18 @@ function finishSession() {
       WR.highlightControls.querySelector('.wr-mini-play-pause').style.display = 'none';
     }
   } else if (WR.shadowRoot) {
+    WR.shadowRoot.querySelector('.wr-word-left').textContent  = '';
+    WR.shadowRoot.querySelector('.wr-word-focus').textContent = '';
+    WR.shadowRoot.querySelector('.wr-word-right').textContent = '';
+    WR.shadowRoot.querySelector('.wr-word-two').textContent   = '';
     const center = WR.shadowRoot.querySelector('.wr-center');
-    center.innerHTML = `<p class="wr-done-msg">${t('doneMsg')}</p>`;
+    let doneMsg = center.querySelector('.wr-done-msg');
+    if (!doneMsg) {
+      doneMsg = document.createElement('p');
+      doneMsg.className = 'wr-done-msg';
+      center.appendChild(doneMsg);
+    }
+    doneMsg.textContent = t('doneMsg');
     WR.shadowRoot.querySelector('.wr-progress-fill').style.width = '100%';
     WR.shadowRoot.querySelector('.wr-progress-text').textContent =
       `${wordsRead} / ${wordsRead}`;
