@@ -183,6 +183,17 @@ function exportSettings() {
   });
 }
 
+const SETTINGS_VALIDATORS = {
+  wpm:            v => Number.isInteger(v) && v >= 100 && v <= 1000,
+  wordsPerChunk:  v => v === 1 || v === 2,
+  displayMode:    v => v === 'overlay' || v === 'highlight',
+  fontSize:       v => Number.isInteger(v) && v >= 24 && v <= 96,
+  fontFamily:     v => ['serif', 'mono', 'system'].includes(v),
+  theme:          v => v === 'dark' || v === 'light',
+  orpColor:       v => typeof v === 'string' && /^#[0-9a-f]{6}$/i.test(v),
+  skipShortWords: v => typeof v === 'boolean',
+};
+
 function importSettings(file) {
   const allowed = new Set(SETTINGS_KEYS);
   const reader = new FileReader();
@@ -190,7 +201,7 @@ function importSettings(file) {
     try {
       const parsed = JSON.parse(e.target.result);
       const filtered = Object.fromEntries(
-        Object.entries(parsed).filter(([k]) => allowed.has(k))
+        Object.entries(parsed).filter(([k, v]) => allowed.has(k) && SETTINGS_VALIDATORS[k]?.(v))
       );
       await browser.storage.local.set(filtered);
       showStatus(t('importSuccess'));

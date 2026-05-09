@@ -1063,8 +1063,9 @@ function finishSession() {
 // ---------------------------------------------------------------------------
 
 function handleKeyDown(e) {
-  if (e.target.isContentEditable ||
-      ['INPUT', 'TEXTAREA', 'SELECT'].includes(e.target.tagName)) return;
+  const actualTarget = e.composedPath()[0];
+  if (actualTarget?.isContentEditable ||
+      ['INPUT', 'TEXTAREA', 'SELECT'].includes(actualTarget?.tagName)) return;
 
   const overlayOpen = WR.shadowHost?.classList.contains('active') ||
                       document.getElementById('wr-mini-controls');
