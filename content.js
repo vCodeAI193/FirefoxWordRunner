@@ -291,12 +291,7 @@ function formatTimeRemaining(wordsLeft, wpm) {
 // Utilities
 // ---------------------------------------------------------------------------
 
-function hexToRgba(hex, alpha) {
-  const r = parseInt(hex.slice(1, 3), 16);
-  const g = parseInt(hex.slice(3, 5), 16);
-  const b = parseInt(hex.slice(5, 7), 16);
-  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
-}
+// hexToRgba is defined in lib/utils.js (loaded before this script)
 
 function tParam(key, params) {
   let msg = browser.i18n.getMessage(key) || key;
@@ -602,7 +597,7 @@ function buildOverlay() {
     input.type = 'number';
     input.className = 'wr-jump-input';
     input.min = '0';
-    input.max = String(total);
+    input.max = String(total - 1);
     input.value = String(savedIndex);
     progressText.textContent = '';
     progressText.appendChild(input);
@@ -611,7 +606,9 @@ function buildOverlay() {
 
     function commit() {
       const val = parseInt(input.value, 10);
-      WR.wordIndex = isNaN(val) ? savedIndex : Math.max(0, Math.min(val, total - 1));
+      let idx = isNaN(val) ? savedIndex : Math.max(0, Math.min(val, total - 1));
+      while (idx < total - 1 && WR.words[idx] === '¶') idx++;
+      WR.wordIndex = idx;
       progressText.textContent = `${WR.wordIndex} / ${total}`;
       if (!wasPaused) resumeSession(); else updateProgress();
     }
@@ -1066,6 +1063,9 @@ function finishSession() {
 // ---------------------------------------------------------------------------
 
 function handleKeyDown(e) {
+  if (e.target.isContentEditable ||
+      ['INPUT', 'TEXTAREA', 'SELECT'].includes(e.target.tagName)) return;
+
   const overlayOpen = WR.shadowHost?.classList.contains('active') ||
                       document.getElementById('wr-mini-controls');
   if (!WR.active && !overlayOpen) return;

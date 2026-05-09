@@ -17,11 +17,12 @@
         "processWords": "readonly",
         "splitAtOrp": "readonly",
         "getWordDuration": "readonly",
-        "estimateReadingMs": "readonly"
+        "estimateReadingMs": "readonly",
+        "hexToRgba": "readonly"
       }
     },
     {
-      "files": ["lib/wordprocessor.js"],
+      "files": ["lib/wordprocessor.js", "lib/utils.js"],
       "globals": {
         "module": "writable"
       }
