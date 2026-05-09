@@ -206,6 +206,10 @@ describe('getWordDuration', () => {
     expect(getWordDuration('end.', BASE)).toBeGreaterThan(getWordDuration('word,', BASE));
   });
 
+  test('paragraph marker ¶ returns 2.5× base duration', () => {
+    expect(getWordDuration('¶', BASE)).toBe(Math.round(BASE * 2.5));
+  });
+
   test('word ending with Unicode ellipsis … adds 0.6× extra', () => {
     // 'Ende…' → letters='Ende' (4) → m=1.0, sentenceEnd → +0.6 → 1.6
     expect(getWordDuration('Ende…', BASE)).toBe(Math.round(BASE * 1.6));

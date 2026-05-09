@@ -35,6 +35,7 @@ const WR = {
   // Highlight mode
   wordPositions: null,      // Array<{ node, start, end }> | null
   highlightBox: null,
+  highlightBox2: null,
   highlightControls: null,
 
   // Accessibility
@@ -76,6 +77,13 @@ browser.runtime.onMessage.addListener((message, _sender, sendResponse) => {
       stopSession();
       sendResponse({ ok: true, active: false, paused: false });
       break;
+
+    case 'countWords': {
+      const raw = extractText('page', '');
+      const count = processWords(raw).filter(w => w !== '¶').length;
+      sendResponse({ count });
+      break;
+    }
   }
   return true;
 });
@@ -113,6 +121,22 @@ function contentNodeFilter(node) {
   return NodeFilter.FILTER_REJECT;
 }
 
+const BLOCK_ELEMENTS = new Set([
+  'P', 'DIV', 'H1', 'H2', 'H3', 'H4', 'H5', 'H6',
+  'LI', 'TD', 'TH', 'BLOCKQUOTE', 'PRE',
+  'ARTICLE', 'SECTION', 'MAIN',
+  'UL', 'OL', 'DL', 'DT', 'DD', 'ADDRESS',
+]);
+
+function getBlockAncestor(node) {
+  let el = node.parentElement;
+  while (el) {
+    if (BLOCK_ELEMENTS.has(el.tagName)) return el;
+    el = el.parentElement;
+  }
+  return document.body;
+}
+
 function createContentWalker(root) {
   return document.createTreeWalker(
     root,
@@ -142,9 +166,17 @@ function extractText(source, customText) {
   }
   const walker = createContentWalker(getContentRoot());
   const chunks = [];
+  let lastBlockParent = null;
   let node;
   while ((node = walker.nextNode())) {
-    if (node.nodeType === Node.TEXT_NODE) chunks.push(node.textContent.trim());
+    if (node.nodeType === Node.TEXT_NODE) {
+      const text = node.textContent.trim();
+      if (!text) continue;
+      const blockParent = getBlockAncestor(node);
+      if (lastBlockParent !== null && blockParent !== lastBlockParent) chunks.push('¶');
+      chunks.push(text);
+      lastBlockParent = blockParent;
+    }
   }
   return chunks.join(' ');
 }
@@ -155,10 +187,18 @@ function extractWordsWithPositions(root) {
   const positions = [];
   const walker = createContentWalker(root);
   const wordRegex = /\S+/g;
+  let lastBlockParent = null;
 
   let node;
   while ((node = walker.nextNode())) {
     if (node.nodeType !== Node.TEXT_NODE) continue;
+    const blockParent = getBlockAncestor(node);
+    if (lastBlockParent !== null && blockParent !== lastBlockParent) {
+      words.push('¶');
+      positions.push({ node: null, start: 0, end: 0, marker: true });
+    }
+    lastBlockParent = blockParent;
+
     const raw = node.textContent;
     wordRegex.lastIndex = 0;
     let match;
@@ -248,6 +288,33 @@ function formatTimeRemaining(wordsLeft, wpm) {
 }
 
 // ---------------------------------------------------------------------------
+// Utilities
+// ---------------------------------------------------------------------------
+
+function hexToRgba(hex, alpha) {
+  const r = parseInt(hex.slice(1, 3), 16);
+  const g = parseInt(hex.slice(3, 5), 16);
+  const b = parseInt(hex.slice(5, 7), 16);
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+}
+
+function tParam(key, params) {
+  let msg = browser.i18n.getMessage(key) || key;
+  Object.entries(params).forEach(([k, v]) => { msg = msg.replace(`{${k}}`, v); });
+  return msg;
+}
+
+function showPageToast(message, durationMs = 2500) {
+  const existing = document.getElementById('wr-page-toast');
+  if (existing) existing.remove();
+  const toast = document.createElement('div');
+  toast.id = 'wr-page-toast';
+  toast.textContent = message;
+  document.body.appendChild(toast);
+  setTimeout(() => toast.remove(), durationMs);
+}
+
+// ---------------------------------------------------------------------------
 // Overlay CSS (injected into shadow root)
 // ---------------------------------------------------------------------------
 
@@ -319,6 +386,22 @@ const OVERLAY_CSS = `
   font-size: 11px;
   color: rgba(255,255,255,0.45);
   font-variant-numeric: tabular-nums;
+  cursor: pointer;
+  border-radius: 3px;
+  padding: 0 2px;
+}
+.wr-progress-text:hover { color: rgba(255,255,255,0.7); background: rgba(255,255,255,0.06); }
+.wr-jump-input {
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid rgba(255,255,255,0.4);
+  color: rgba(255,255,255,0.7);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  font-family: inherit;
+  width: 70px;
+  padding: 0;
+  outline: none;
 }
 .wr-time-remaining {
   font-size: 11px;
@@ -434,7 +517,7 @@ const OVERLAY_HTML = `
     <div class="wr-progress">
       <div class="wr-progress-bar"><div class="wr-progress-fill"></div></div>
       <div class="wr-progress-meta">
-        <span class="wr-progress-text">0 / 0</span>
+        <span class="wr-progress-text" tabindex="0" role="button" title="${t('jumpToWordTitle')}">0 / 0</span>
         <span class="wr-time-remaining"></span>
       </div>
     </div>
@@ -505,6 +588,45 @@ function buildOverlay() {
     WR.intervalMs = Math.round(60000 / val);
     browser.storage.local.set({ wpm: val });
   });
+
+  const progressText = shadow.querySelector('.wr-progress-text');
+
+  function activateJumpInput() {
+    if (!WR.active) return;
+    const savedIndex = WR.wordIndex;
+    const total = WR.words.length;
+    const wasPaused = WR.paused;
+    if (!wasPaused) pauseSession();
+
+    const input = document.createElement('input');
+    input.type = 'number';
+    input.className = 'wr-jump-input';
+    input.min = '0';
+    input.max = String(total);
+    input.value = String(savedIndex);
+    progressText.textContent = '';
+    progressText.appendChild(input);
+    input.focus();
+    input.select();
+
+    function commit() {
+      const val = parseInt(input.value, 10);
+      WR.wordIndex = isNaN(val) ? savedIndex : Math.max(0, Math.min(val, total - 1));
+      progressText.textContent = `${WR.wordIndex} / ${total}`;
+      if (!wasPaused) resumeSession(); else updateProgress();
+    }
+
+    input.addEventListener('keydown', e => {
+      if (e.key === 'Enter') { e.preventDefault(); input.removeEventListener('blur', commit); commit(); }
+      if (e.key === 'Escape') { e.preventDefault(); input.removeEventListener('blur', commit); WR.wordIndex = savedIndex; progressText.textContent = `${savedIndex} / ${total}`; if (!wasPaused) resumeSession(); }
+    });
+    input.addEventListener('blur', commit);
+  }
+
+  progressText.addEventListener('click', activateJumpInput);
+  progressText.addEventListener('keydown', e => {
+    if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); activateJumpInput(); }
+  });
 }
 
 const FONT_FAMILY_MAP = {
@@ -564,12 +686,16 @@ function buildHighlightUI() {
   box.id = 'wr-highlight-box';
   document.body.appendChild(box);
 
+  const box2 = document.createElement('div');
+  box2.id = 'wr-highlight-box-2';
+  document.body.appendChild(box2);
+
   const controls = document.createElement('div');
   controls.id = 'wr-mini-controls';
   controls.innerHTML = `
     <span class="wr-mini-progress">0 / 0</span>
-    <button class="wr-mini-btn wr-mini-play-pause">${t('miniPauseLabel')}</button>
-    <button class="wr-mini-btn wr-mini-stop">${t('miniStopLabel')}</button>
+    <button class="wr-mini-btn wr-mini-play-pause" aria-label="${t('pauseAriaLabel')}">${t('miniPauseLabel')}</button>
+    <button class="wr-mini-btn wr-mini-stop" aria-label="${t('stopAriaLabel')}">${t('miniStopLabel')}</button>
     <span class="wr-mini-time"></span>
   `;
   document.body.appendChild(controls);
@@ -579,38 +705,59 @@ function buildHighlightUI() {
   });
   controls.querySelector('.wr-mini-stop').addEventListener('click', stopSession);
 
-  WR.highlightBox     = box;
+  WR.highlightBox      = box;
+  WR.highlightBox2     = box2;
   WR.highlightControls = controls;
 }
 
 function removeHighlightUI() {
   WR.highlightBox?.remove();
+  WR.highlightBox2?.remove();
   WR.highlightControls?.remove();
   WR.highlightBox      = null;
+  WR.highlightBox2     = null;
   WR.highlightControls = null;
 }
 
-function highlightWordAt(index) {
-  if (!WR.wordPositions || index >= WR.wordPositions.length) return;
-  const pos = WR.wordPositions[index];
-  if (!pos || !WR.highlightBox) return;
-
+function positionHighlightBox(box, pos) {
+  if (!pos || pos.marker || !box) { box && (box.style.display = 'none'); return false; }
   try {
     const range = document.createRange();
     range.setStart(pos.node, pos.start);
     range.setEnd(pos.node, Math.min(pos.end, pos.node.textContent.length));
     const rect = range.getBoundingClientRect();
+    box.style.display = 'block';
+    box.style.top    = `${rect.top  + window.scrollY}px`;
+    box.style.left   = `${rect.left + window.scrollX}px`;
+    box.style.width  = `${rect.width}px`;
+    box.style.height = `${rect.height}px`;
+    return rect;
+  } catch { box.style.display = 'none'; return false; }
+}
 
-    WR.highlightBox.style.display = 'block';
-    WR.highlightBox.style.top    = `${rect.top  + window.scrollY}px`;
-    WR.highlightBox.style.left   = `${rect.left + window.scrollX}px`;
-    WR.highlightBox.style.width  = `${rect.width}px`;
-    WR.highlightBox.style.height = `${rect.height}px`;
+function highlightWordAt(index) {
+  if (!WR.wordPositions || index >= WR.wordPositions.length) return;
+  const pos = WR.wordPositions[index];
 
-    if (rect.top < 120 || rect.bottom > window.innerHeight - 120) {
-      pos.node.parentElement?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    }
-  } catch { /* DOM may have changed */ }
+  // ¶ marker — hide boxes during paragraph pause
+  if (!pos || pos.marker) {
+    if (WR.highlightBox)  WR.highlightBox.style.display  = 'none';
+    if (WR.highlightBox2) WR.highlightBox2.style.display = 'none';
+    return;
+  }
+
+  if (!WR.highlightBox) return;
+
+  const rect = positionHighlightBox(WR.highlightBox, pos);
+  if (rect && (rect.top < 120 || rect.bottom > window.innerHeight - 120)) {
+    pos.node.parentElement?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }
+
+  // Second word box (2-word mode)
+  if (WR.highlightBox2) {
+    const pos2 = WR.wordsPerChunk >= 2 ? WR.wordPositions[index + 1] : null;
+    positionHighlightBox(WR.highlightBox2, pos2);
+  }
 }
 
 function updateHighlightControls() {
@@ -620,7 +767,10 @@ function updateHighlightControls() {
   const btn  = WR.highlightControls.querySelector('.wr-mini-play-pause');
   if (prog) prog.textContent = `${WR.wordIndex} / ${WR.words.length}`;
   if (time) time.textContent = formatTimeRemaining(WR.words.length - WR.wordIndex, WR.wpm);
-  if (btn)  btn.textContent  = WR.paused ? t('miniResumeLabel') : t('miniPauseLabel');
+  if (btn) {
+    btn.textContent = WR.paused ? t('miniResumeLabel') : t('miniPauseLabel');
+    btn.setAttribute('aria-label', WR.paused ? t('resumeAriaLabel') : t('pauseAriaLabel'));
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -629,6 +779,16 @@ function updateHighlightControls() {
 
 function renderChunkInOverlay(chunk) {
   if (!WR.shadowRoot || !chunk.length) return;
+
+  // Paragraph break — clear display and skip animation
+  if (chunk[0] === '¶') {
+    WR.shadowRoot.querySelector('.wr-word-left').textContent  = '';
+    WR.shadowRoot.querySelector('.wr-word-focus').textContent = '';
+    WR.shadowRoot.querySelector('.wr-word-right').textContent = '';
+    WR.shadowRoot.querySelector('.wr-word-two').textContent   = '';
+    return;
+  }
+
   const { before, focus, after } = splitAtOrp(chunk[0]);
   WR.shadowRoot.querySelector('.wr-word-left').textContent  = before;
   WR.shadowRoot.querySelector('.wr-word-focus').textContent = focus;
@@ -757,8 +917,20 @@ async function startSession(wpm, source, customText) {
 
   WR.wordIndex = source === 'page' ? await restorePosition(words) : 0;
 
+  if (WR.wordIndex > 0) {
+    showPageToast(tParam('toastResuming', { current: WR.wordIndex, total: words.length }));
+  }
+
   if (displayMode === 'highlight') {
     buildHighlightUI();
+    if (WR.highlightBox) {
+      WR.highlightBox.style.background  = hexToRgba(orpColor, 0.28);
+      WR.highlightBox.style.borderColor = hexToRgba(orpColor, 0.65);
+    }
+    if (WR.highlightBox2) {
+      WR.highlightBox2.style.background  = hexToRgba(orpColor, 0.18);
+      WR.highlightBox2.style.borderColor = hexToRgba(orpColor, 0.45);
+    }
   } else {
     buildOverlay();
     applyTheme(theme, orpColor, fontSize, fontFamily);
@@ -799,6 +971,7 @@ function pauseSession() {
   updatePlayPauseIcon();
   updateHighlightControls();
   savePosition();
+  showPageToast(t('toastPositionSaved'));
 }
 
 function resumeSession() {
@@ -851,7 +1024,9 @@ function finishSession() {
 
   if (WR.displayMode === 'highlight') {
     WR.highlightBox?.remove();
-    WR.highlightBox = null;
+    WR.highlightBox2?.remove();
+    WR.highlightBox  = null;
+    WR.highlightBox2 = null;
     if (WR.highlightControls) {
       WR.highlightControls.querySelector('.wr-mini-progress').textContent =
         `${wordsRead} / ${wordsRead}`;
@@ -913,3 +1088,11 @@ function attachKeyboard() {
 function detachKeyboard() {
   document.removeEventListener('keydown', handleKeyDown, { capture: true });
 }
+
+// ---------------------------------------------------------------------------
+// Auto-pause on tab hide
+// ---------------------------------------------------------------------------
+
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden && WR.active && !WR.paused) pauseSession();
+});

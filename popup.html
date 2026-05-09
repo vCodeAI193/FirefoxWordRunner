@@ -139,13 +139,20 @@
           </label>
         </div>
 
+        <!-- Export / Import settings -->
+        <div class="setting-row setting-row--btns">
+          <button id="export-settings-btn" class="rl-btn" type="button" data-i18n="exportSettings"></button>
+          <button id="import-settings-btn" class="rl-btn" type="button" data-i18n="importSettings"></button>
+          <input type="file" id="import-settings-file" accept=".json" style="display:none">
+        </div>
+
       </div>
     </details>
 
     <!-- Reading List -->
     <details class="collapsible-section" id="reading-list-details">
       <summary class="collapsible-summary" data-i18n="readingListLabel"></summary>
-      <div id="reading-list-items" class="reading-list-items"></div>
+      <ul id="reading-list-items" class="reading-list-items" role="list"></ul>
       <button id="add-to-list-btn" class="add-btn" type="button" data-i18n="addToListLabel"></button>
     </details>
 

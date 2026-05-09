@@ -81,8 +81,54 @@
   outline-offset: 2px;
 }
 
+/* ── Page toast ── */
+#wr-page-toast {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  z-index: 2147483647;
+  background: rgba(10, 10, 25, 0.88);
+  backdrop-filter: blur(6px);
+  color: #e8eaf6;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  font-size: 13px;
+  padding: 8px 14px;
+  border-radius: 8px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.35);
+  pointer-events: none;
+  animation: wr-toast-in 0.2s ease-out;
+}
+
+@keyframes wr-toast-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ── Second highlight box (2-word mode) ── */
+#wr-highlight-box-2 {
+  position: absolute;
+  display: none;
+  pointer-events: none;
+  z-index: 2147483645;
+  border-radius: 3px;
+}
+
+/* ── Mobile: mini-controls full width ── */
+@media (max-width: 480px) {
+  #wr-mini-controls {
+    left: 0;
+    right: 0;
+    transform: none;
+    width: 100%;
+    border-radius: 0;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .wr-mini-btn { transition: none; }
+  #wr-page-toast { animation: none; }
 }
 
 @media (forced-colors: active) {

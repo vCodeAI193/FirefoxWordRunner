@@ -51,5 +51,13 @@
   "miniResumeLabel":        { "message": "Resume" },
   "timeRemainingShort":     { "message": "< 1 min" },
   "openLabel":              { "message": "Open" },
-  "customTextEmpty":        { "message": "Please enter some text first." }
+  "customTextEmpty":        { "message": "Please enter some text first." },
+  "wordsLabel":             { "message": "words" },
+  "toastPositionSaved":     { "message": "Position saved" },
+  "toastResuming":          { "message": "Resuming from word {current} of {total}" },
+  "exportSettings":         { "message": "Export Settings" },
+  "importSettings":         { "message": "Import Settings" },
+  "importSuccess":          { "message": "Settings imported." },
+  "importError":            { "message": "Invalid settings file." },
+  "jumpToWordTitle":        { "message": "Click to jump to a word position" }
 }

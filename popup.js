@@ -96,14 +96,27 @@ async function renderReadingList() {
   }
 
   list.forEach((item, index) => {
-    const row = document.createElement('div');
+    const row = document.createElement('li');
     row.className = 'reading-list-item';
+
+    const info = document.createElement('div');
+    info.className = 'rl-info';
 
     const title = document.createElement('span');
     title.className = 'rl-title';
     title.textContent = item.title || item.url;
     title.title = item.url;
-    row.appendChild(title);
+    info.appendChild(title);
+
+    if (item.wordCount > 0) {
+      const meta = document.createElement('span');
+      meta.className = 'rl-meta';
+      const minEst = Math.ceil(item.wordCount / 250);
+      meta.textContent = `~${item.wordCount.toLocaleString()} ${t('wordsLabel')} · ~${minEst} min`;
+      info.appendChild(meta);
+    }
+
+    row.appendChild(info);
 
     const openBtn = document.createElement('button');
     openBtn.className = 'rl-btn rl-open';
@@ -138,9 +151,55 @@ async function addCurrentPageToList(tab) {
   // Don't add duplicates
   if (list.some(item => item.url === tab.url)) return;
 
-  list.push({ url: tab.url, title: tab.title || tab.url, addedAt: Date.now() });
+  let wordCount = 0;
+  try {
+    const resp = await browser.tabs.sendMessage(tab.id, { action: 'countWords' });
+    wordCount = resp?.count || 0;
+  } catch { /* content script not available on this page */ }
+
+  list.push({ url: tab.url, title: tab.title || tab.url, addedAt: Date.now(), wordCount });
   await browser.storage.local.set({ readingList: list });
   renderReadingList();
+}
+
+// ---------------------------------------------------------------------------
+// Settings export / import
+// ---------------------------------------------------------------------------
+
+const SETTINGS_KEYS = [
+  'wpm', 'wordsPerChunk', 'displayMode', 'fontSize', 'fontFamily',
+  'theme', 'orpColor', 'skipShortWords',
+];
+
+function exportSettings() {
+  browser.storage.local.get(SETTINGS_KEYS).then(saved => {
+    const blob = new Blob([JSON.stringify(saved, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'word-runner-settings.json';
+    a.click();
+    URL.revokeObjectURL(url);
+  });
+}
+
+function importSettings(file) {
+  const allowed = new Set(SETTINGS_KEYS);
+  const reader = new FileReader();
+  reader.onload = async e => {
+    try {
+      const parsed = JSON.parse(e.target.result);
+      const filtered = Object.fromEntries(
+        Object.entries(parsed).filter(([k]) => allowed.has(k))
+      );
+      await browser.storage.local.set(filtered);
+      showStatus(t('importSuccess'));
+      setTimeout(() => window.location.reload(), 800);
+    } catch {
+      showStatus(t('importError'), 'error');
+    }
+  };
+  reader.readAsText(file);
 }
 
 // ---------------------------------------------------------------------------
@@ -261,6 +320,16 @@ document.addEventListener('DOMContentLoaded', async () => {
   if (addToListBtn) {
     addToListBtn.addEventListener('click', () => addCurrentPageToList(activeTab));
   }
+
+  const exportBtn  = document.getElementById('export-settings-btn');
+  const importBtn  = document.getElementById('import-settings-btn');
+  const importFile = document.getElementById('import-settings-file');
+
+  if (exportBtn) exportBtn.addEventListener('click', exportSettings);
+  if (importBtn) importBtn.addEventListener('click', () => importFile?.click());
+  if (importFile) importFile.addEventListener('change', () => {
+    if (importFile.files[0]) importSettings(importFile.files[0]);
+  });
 
   if (startBtn.disabled) return;
 
