@@ -890,7 +890,7 @@ async function startSession(wpm, source, customText) {
     positions = result.positions;
     if (skipShort) {
       const filtered = words.reduce((acc, w, i) => {
-        if (w.replace(/\W/g, '').length > 2) acc.push({ w, pos: positions[i] });
+        if (w === '¶' || w.replace(/\W/g, '').length > 2) acc.push({ w, pos: positions[i] });
         return acc;
       }, []);
       words     = filtered.map(x => x.w);
@@ -898,7 +898,7 @@ async function startSession(wpm, source, customText) {
     }
   } else {
     const raw = processWords(extractText(source, customText));
-    words     = skipShort ? raw.filter(w => w.replace(/\W/g, '').length > 2) : raw;
+    words     = skipShort ? raw.filter(w => w === '¶' || w.replace(/\W/g, '').length > 2) : raw;
     positions = null;
   }
 
@@ -1078,12 +1078,17 @@ function handleKeyDown(e) {
     e.preventDefault();
     e.stopPropagation();
     stopSession();
-  } else if (e.code === 'ArrowRight' && WR.active) {
+  } else if ((e.code === 'ArrowRight' || e.code === 'ArrowLeft') && WR.active) {
     e.preventDefault();
-    WR.wordIndex = Math.min(WR.wordIndex + 10, WR.words.length - 1);
-  } else if (e.code === 'ArrowLeft' && WR.active) {
-    e.preventDefault();
-    WR.wordIndex = Math.max(0, WR.wordIndex - 10);
+    WR.wordIndex = e.code === 'ArrowRight'
+      ? Math.min(WR.wordIndex + 10, WR.words.length - 1)
+      : Math.max(0, WR.wordIndex - 10);
+    if (WR.paused) {
+      const chunk = WR.words.slice(WR.wordIndex, WR.wordIndex + WR.wordsPerChunk);
+      if (WR.displayMode === 'highlight') highlightWordAt(WR.wordIndex);
+      else renderChunkInOverlay(chunk);
+      updateProgress();
+    }
   } else if (e.code === 'Tab' && WR.shadowRoot && WR.active) {
     e.preventDefault();
     const focusables = Array.from(
