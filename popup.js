@@ -183,16 +183,7 @@ function exportSettings() {
   });
 }
 
-const SETTINGS_VALIDATORS = {
-  wpm:            v => Number.isInteger(v) && v >= 100 && v <= 1000,
-  wordsPerChunk:  v => v === 1 || v === 2,
-  displayMode:    v => v === 'overlay' || v === 'highlight',
-  fontSize:       v => Number.isInteger(v) && v >= 24 && v <= 96,
-  fontFamily:     v => ['serif', 'mono', 'system'].includes(v),
-  theme:          v => v === 'dark' || v === 'light',
-  orpColor:       v => typeof v === 'string' && /^#[0-9a-f]{6}$/i.test(v),
-  skipShortWords: v => typeof v === 'boolean',
-};
+// SETTINGS_VALIDATORS is defined in lib/validators.js (loaded before this script)
 
 function importSettings(file) {
   const allowed = new Set(SETTINGS_KEYS);

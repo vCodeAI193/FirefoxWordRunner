@@ -22,9 +22,15 @@
       }
     },
     {
-      "files": ["lib/wordprocessor.js", "lib/utils.js"],
+      "files": ["lib/wordprocessor.js", "lib/utils.js", "lib/validators.js"],
       "globals": {
         "module": "writable"
+      }
+    },
+    {
+      "files": ["popup.js"],
+      "globals": {
+        "SETTINGS_VALIDATORS": "readonly"
       }
     }
   ]
