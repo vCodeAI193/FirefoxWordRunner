@@ -6,6 +6,11 @@ function t(key) {
   return browser.i18n.getMessage(key) || key;
 }
 
+function debounce(fn, ms) {
+  let timer;
+  return (...args) => { clearTimeout(timer); timer = setTimeout(() => fn(...args), ms); };
+}
+
 function applyI18n() {
   document.querySelectorAll('[data-i18n]').forEach(el => {
     const msg = t(el.getAttribute('data-i18n'));
@@ -255,11 +260,12 @@ document.addEventListener('DOMContentLoaded', async () => {
   displayStats(data.stats);
 
   // ── Persist settings on change ──
+  const saveWpm = debounce(val => browser.storage.local.set({ wpm: val }), 300);
   slider.addEventListener('input', () => {
     const val = parseInt(slider.value, 10);
     wpmDisplay.textContent = val;
     slider.setAttribute('aria-valuenow', val);
-    browser.storage.local.set({ wpm: val });
+    saveWpm(val);
   });
 
   fontSlider.addEventListener('input', () => {

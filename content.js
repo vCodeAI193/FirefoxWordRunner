@@ -27,6 +27,7 @@ const WR = {
   lastTickTime: null,
   lastScheduledDuration: 200,
   sessionStartTime: null,
+  lastStartParams: null,
 
   // Overlay (Shadow DOM)
   shadowHost: null,
@@ -37,10 +38,20 @@ const WR = {
   highlightBox: null,
   highlightBox2: null,
   highlightControls: null,
+  lastHighlightedIndex: -1,
 
   // Accessibility
   previousFocus: null,
 };
+
+// Position map cache (highlight mode) — reuse across sessions on the same page
+let _posCache = null;
+let _posCacheKey = null;
+
+function debounce(fn, ms) {
+  let timer;
+  return (...args) => { clearTimeout(timer); timer = setTimeout(() => fn(...args), ms); };
+}
 
 // ---------------------------------------------------------------------------
 // Message listener
@@ -576,12 +587,13 @@ function buildOverlay() {
   });
   shadow.querySelector('.wr-stop-btn').addEventListener('click', stopSession);
 
+  const saveWpm = debounce(val => browser.storage.local.set({ wpm: val }), 300);
   shadow.querySelector('.wr-wpm-slider').addEventListener('input', e => {
     const val = parseInt(e.target.value, 10);
     shadow.querySelector('.wr-wpm-val').textContent = val;
     WR.wpm = val;
     WR.intervalMs = Math.round(60000 / val);
-    browser.storage.local.set({ wpm: val });
+    saveWpm(val);
   });
 
   const progressText = shadow.querySelector('.wr-progress-text');
@@ -835,7 +847,10 @@ function tick() {
   const chunk = WR.words.slice(chunkStart, chunkStart + WR.wordsPerChunk);
 
   if (WR.displayMode === 'highlight') {
-    highlightWordAt(chunkStart);
+    if (chunkStart !== WR.lastHighlightedIndex) {
+      highlightWordAt(chunkStart);
+      WR.lastHighlightedIndex = chunkStart;
+    }
   } else {
     renderChunkInOverlay(chunk);
   }
@@ -882,7 +897,12 @@ async function startSession(wpm, source, customText) {
   // Extract words (+ position map for highlight mode on page content)
   let words, positions;
   if (displayMode === 'highlight' && source === 'page') {
-    const result = extractWordsWithPositions(getContentRoot());
+    const key = pageKey();
+    if (!_posCache || _posCacheKey !== key) {
+      _posCache    = extractWordsWithPositions(getContentRoot());
+      _posCacheKey = key;
+    }
+    const result = _posCache;
     words     = result.words;
     positions = result.positions;
     if (skipShort) {
@@ -997,9 +1017,10 @@ function stopSession() {
   WR.timeoutId        = null;
   WR.lastTickTime     = null;
   WR.words            = [];
-  WR.wordIndex        = 0;
-  WR.wordPositions    = null;
-  WR.sessionStartTime = null;
+  WR.wordIndex             = 0;
+  WR.wordPositions         = null;
+  WR.sessionStartTime      = null;
+  WR.lastHighlightedIndex  = -1;
 
   if (WR.displayMode === 'highlight') {
     removeHighlightUI();
