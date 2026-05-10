@@ -250,6 +250,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
   if (data.fontSize) {
     fontSlider.value = data.fontSize;
+    fontSlider.setAttribute('aria-valuenow', data.fontSize);
     fontDisplay.textContent = data.fontSize;
   }
   if (data.fontFamily) fontFamilySelect.value = data.fontFamily;
@@ -271,6 +272,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   fontSlider.addEventListener('input', () => {
     const val = parseInt(fontSlider.value, 10);
     fontDisplay.textContent = val;
+    fontSlider.setAttribute('aria-valuenow', val);
     browser.storage.local.set({ fontSize: val });
   });
 

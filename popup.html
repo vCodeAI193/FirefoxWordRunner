@@ -34,6 +34,7 @@
         </label>
       </div>
       <div id="custom-text-section" class="custom-text-section hidden">
+        <label for="custom-text" class="sr-only" data-i18n="customText"></label>
         <textarea id="custom-text" rows="4" data-i18n-placeholder="customTextPlaceholder"></textarea>
       </div>
     </section>
@@ -67,8 +68,8 @@
 
         <!-- Display mode -->
         <div class="setting-row">
-          <span class="setting-label" data-i18n="displayModeLabel"></span>
-          <div class="toggle-group" role="radiogroup">
+          <span id="display-mode-label" class="setting-label" data-i18n="displayModeLabel"></span>
+          <div class="toggle-group" role="radiogroup" aria-labelledby="display-mode-label">
             <label class="toggle-label">
               <input type="radio" name="displayMode" value="overlay" id="radio-overlay" checked>
               <span data-i18n="overlayMode"></span>
@@ -82,8 +83,8 @@
 
         <!-- Words per chunk -->
         <div class="setting-row">
-          <span class="setting-label" data-i18n="wordsPerChunkLabel"></span>
-          <div class="toggle-group" role="radiogroup">
+          <span id="words-chunk-label" class="setting-label" data-i18n="wordsPerChunkLabel"></span>
+          <div class="toggle-group" role="radiogroup" aria-labelledby="words-chunk-label">
             <label class="toggle-label">
               <input type="radio" name="wordsPerChunk" value="1" id="radio-one-word" checked>
               <span data-i18n="oneWord"></span>
@@ -102,7 +103,8 @@
             <output id="font-size-display" for="font-size-slider">48</output>
             <span class="wpm-unit">px</span>
           </div>
-          <input type="range" id="font-size-slider" min="24" max="96" step="4" value="48">
+          <input type="range" id="font-size-slider" min="24" max="96" step="4" value="48"
+                 aria-valuemin="24" aria-valuemax="96" aria-valuenow="48">
         </div>
 
         <!-- Font family -->

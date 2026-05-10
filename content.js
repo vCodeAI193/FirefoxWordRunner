@@ -1101,6 +1101,8 @@ function finishSession() {
     WR.shadowRoot.querySelector('.wr-time-remaining').textContent = '';
   }
 
+  WR.previousFocus?.focus();
+  WR.previousFocus = null;
   attachKeyboard(); // keep Escape active to close overlay/controls
 }
 
