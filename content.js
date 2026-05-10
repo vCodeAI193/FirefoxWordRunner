@@ -174,6 +174,8 @@ function extractText(source, customText) {
   if (source === 'selection') {
     const sel = window.getSelection();
     if (sel && sel.toString().trim().length > 0) return sel.toString().trim();
+    showPageToast(t('noSelectionFound'));
+    return '';
   }
   const walker = createContentWalker(getContentRoot());
   const chunks = [];
@@ -490,6 +492,12 @@ const OVERLAY_CSS = `
   color: #4fc3f7;
   font-weight: 600;
   text-align: center;
+}
+
+.wr-restart-btn {
+  margin-top: 10px;
+  font-size: 13px;
+  padding: 6px 16px;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -879,6 +887,8 @@ function tick() {
 async function startSession(wpm, source, customText) {
   if (WR.active) stopSession();
 
+  WR.lastStartParams = { wpm, source, customText };
+
   // Save focus so we can restore it on close
   WR.previousFocus = document.activeElement;
 
@@ -954,8 +964,10 @@ async function startSession(wpm, source, customText) {
     }
   } else {
     buildOverlay();
-    // Remove done-message from a previous finished session
+    // Remove done-message and restart button from a previous finished session
     WR.shadowRoot?.querySelector('.wr-done-msg')?.remove();
+    const prevRestart = WR.shadowRoot?.querySelector('.wr-restart-btn');
+    if (prevRestart) prevRestart.style.display = 'none';
     applyTheme(theme, orpColor, fontSize, fontFamily);
     showOverlay();
     if (WR.shadowRoot) {
@@ -1057,6 +1069,7 @@ function finishSession() {
       WR.highlightControls.querySelector('.wr-mini-time').textContent = '';
       WR.highlightControls.querySelector('.wr-mini-play-pause').style.display = 'none';
     }
+    showPageToast(t('doneMsg'));
   } else if (WR.shadowRoot) {
     WR.shadowRoot.querySelector('.wr-word-left').textContent  = '';
     WR.shadowRoot.querySelector('.wr-word-focus').textContent = '';
@@ -1070,6 +1083,18 @@ function finishSession() {
       center.appendChild(doneMsg);
     }
     doneMsg.textContent = t('doneMsg');
+    let restartBtn = center.querySelector('.wr-restart-btn');
+    if (!restartBtn) {
+      restartBtn = document.createElement('button');
+      restartBtn.className = 'wr-restart-btn wr-btn';
+      restartBtn.addEventListener('click', () => {
+        const p = WR.lastStartParams;
+        if (p) startSession(p.wpm, p.source, p.customText);
+      });
+      center.appendChild(restartBtn);
+    }
+    restartBtn.textContent  = t('restartReading');
+    restartBtn.style.display = '';
     WR.shadowRoot.querySelector('.wr-progress-fill').style.width = '100%';
     WR.shadowRoot.querySelector('.wr-progress-text').textContent =
       `${wordsRead} / ${wordsRead}`;
@@ -1111,6 +1136,26 @@ function handleKeyDown(e) {
       else renderChunkInOverlay(chunk);
       updateProgress();
     }
+  } else if ((e.key === '+' || e.key === '=') && WR.active) {
+    e.preventDefault();
+    const val = Math.min(1000, WR.wpm + 25);
+    WR.wpm = val;
+    WR.intervalMs = Math.round(60000 / val);
+    if (WR.shadowRoot) {
+      const sl = WR.shadowRoot.querySelector('.wr-wpm-slider');
+      if (sl) { sl.value = val; WR.shadowRoot.querySelector('.wr-wpm-val').textContent = val; }
+    }
+    browser.storage.local.set({ wpm: val });
+  } else if (e.key === '-' && WR.active) {
+    e.preventDefault();
+    const val = Math.max(100, WR.wpm - 25);
+    WR.wpm = val;
+    WR.intervalMs = Math.round(60000 / val);
+    if (WR.shadowRoot) {
+      const sl = WR.shadowRoot.querySelector('.wr-wpm-slider');
+      if (sl) { sl.value = val; WR.shadowRoot.querySelector('.wr-wpm-val').textContent = val; }
+    }
+    browser.storage.local.set({ wpm: val });
   } else if (e.code === 'Tab' && WR.shadowRoot && WR.active) {
     e.preventDefault();
     const focusables = Array.from(

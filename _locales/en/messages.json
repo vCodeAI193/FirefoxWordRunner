@@ -60,5 +60,7 @@
   "importSuccess":          { "message": "Settings imported." },
   "importError":            { "message": "Invalid settings file." },
   "jumpToWordTitle":        { "message": "Click to jump to a word position" },
-  "noWordsFound":           { "message": "No readable text found on this page." }
+  "noWordsFound":           { "message": "No readable text found on this page." },
+  "noSelectionFound":       { "message": "No text selected on the page." },
+  "restartReading":         { "message": "Read again" }
 }
