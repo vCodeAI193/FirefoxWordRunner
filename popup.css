@@ -230,6 +230,10 @@ details[open] .collapsible-summary::before { transform: rotate(90deg); }
 
 /* ── Stats ── */
 .stats-content { margin-top: 8px; font-size: 12px; color: var(--text-muted); line-height: 1.6; }
+#clear-stats-btn { margin-top: 6px; }
+
+/* ── Reading list date ── */
+.rl-date { display: block; font-size: 10px; color: var(--text-muted); margin-top: 1px; }
 
 /* ── Accessibility helpers ── */
 .sr-only {

@@ -5,7 +5,9 @@
   "scripts": {
     "test": "jest",
     "lint": "eslint lib/ popup.js background.js content.js",
-    "check": "npm run lint && npm test"
+    "check": "npm run lint && npm test",
+    "coverage": "jest --coverage",
+    "build": "zip -r word-runner.zip manifest.json icons/ _locales/ lib/ background.js content.js content.css popup.js popup.html popup.css"
   },
   "devDependencies": {
     "eslint": "^8.57.0",

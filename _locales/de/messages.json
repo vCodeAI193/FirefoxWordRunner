@@ -62,5 +62,7 @@
   "jumpToWordTitle":        { "message": "Klicken um zu Wortposition zu springen" },
   "noWordsFound":           { "message": "Kein lesbarer Text auf dieser Seite gefunden." },
   "noSelectionFound":       { "message": "Kein Text auf der Seite ausgewählt." },
-  "restartReading":         { "message": "Erneut lesen" }
+  "restartReading":         { "message": "Erneut lesen" },
+  "clearStats":             { "message": "Statistik zurücksetzen" },
+  "statsCleared":           { "message": "Statistik zurückgesetzt." }
 }

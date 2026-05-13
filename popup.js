@@ -121,6 +121,13 @@ async function renderReadingList() {
       info.appendChild(meta);
     }
 
+    if (item.addedAt) {
+      const date = document.createElement('span');
+      date.className = 'rl-date';
+      date.textContent = new Date(item.addedAt).toLocaleDateString();
+      info.appendChild(date);
+    }
+
     row.appendChild(info);
 
     const openBtn = document.createElement('button');
@@ -259,6 +266,12 @@ document.addEventListener('DOMContentLoaded', async () => {
   if (data.skipShortWords) skipShortWords.checked = true;
 
   displayStats(data.stats);
+
+  document.getElementById('clear-stats-btn').addEventListener('click', async () => {
+    await browser.storage.local.remove('stats');
+    displayStats(null);
+    showStatus(t('statsCleared'));
+  });
 
   // ── Persist settings on change ──
   const saveWpm = debounce(val => browser.storage.local.set({ wpm: val }), 300);
