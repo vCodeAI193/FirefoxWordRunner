@@ -317,6 +317,8 @@ function showPageToast(message, durationMs = 2500) {
   if (existing) existing.remove();
   const toast = document.createElement('div');
   toast.id = 'wr-page-toast';
+  toast.setAttribute('role', 'status');
+  toast.setAttribute('aria-live', 'polite');
   toast.textContent = message;
   document.body.appendChild(toast);
   setTimeout(() => toast.remove(), durationMs);
@@ -1054,8 +1056,9 @@ function finishSession() {
   WR.active   = false;
   WR.paused   = false;
   clearTimeout(WR.timeoutId);
-  WR.timeoutId        = null;
-  WR.sessionStartTime = null;
+  WR.timeoutId             = null;
+  WR.sessionStartTime      = null;
+  WR.lastHighlightedIndex  = -1;
   detachKeyboard();
 
   if (WR.displayMode === 'highlight') {

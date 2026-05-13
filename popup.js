@@ -32,10 +32,13 @@ function applyI18n() {
 
 function displayStats(stats) {
   const el = document.getElementById('stats-content');
+  const clearBtn = document.getElementById('clear-stats-btn');
   if (!stats || !stats.sessions) {
     el.textContent = t('statsEmpty');
+    if (clearBtn) clearBtn.style.display = 'none';
     return;
   }
+  if (clearBtn) clearBtn.style.display = '';
   const avgWpm = stats.totalMs > 0
     ? Math.round(stats.totalWords / (stats.totalMs / 60000))
     : 0;
@@ -100,7 +103,7 @@ async function renderReadingList() {
     return;
   }
 
-  list.forEach((item, index) => {
+  list.forEach(item => {
     const row = document.createElement('li');
     row.className = 'reading-list-item';
 
@@ -145,7 +148,9 @@ async function renderReadingList() {
     removeBtn.textContent = t('removeFromList');
     removeBtn.addEventListener('click', async () => {
       const d = await browser.storage.local.get('readingList');
-      const updated = (d.readingList || []).filter((_, i) => i !== index);
+      const updated = (d.readingList || []).filter(
+        it => !(it.url === item.url && it.addedAt === item.addedAt)
+      );
       await browser.storage.local.set({ readingList: updated });
       renderReadingList();
     });
@@ -221,6 +226,7 @@ function importSettings(file) {
 // ---------------------------------------------------------------------------
 
 document.addEventListener('DOMContentLoaded', async () => {
+  document.documentElement.lang = browser.i18n.getUILanguage().split('-')[0];
   applyI18n();
 
   // Element refs
