@@ -44,6 +44,9 @@ const WR = {
   previousFocus: null,
 };
 
+// Paragraph-break token inserted between block-level elements
+const PARA_MARKER = '¶';
+
 // Position map cache (highlight mode) — reuse across sessions on the same page
 let _posCache = null;
 let _posCacheKey = null;
@@ -91,7 +94,7 @@ browser.runtime.onMessage.addListener((message, _sender, sendResponse) => {
 
     case 'countWords': {
       const raw = extractText('page', '');
-      const count = processWords(raw).filter(w => w !== '¶').length;
+      const count = processWords(raw).filter(w => w !== PARA_MARKER).length;
       sendResponse({ count });
       break;
     }
@@ -186,7 +189,7 @@ function extractText(source, customText) {
       const text = node.textContent.trim();
       if (!text) continue;
       const blockParent = getBlockAncestor(node);
-      if (lastBlockParent !== null && blockParent !== lastBlockParent) chunks.push('¶');
+      if (lastBlockParent !== null && blockParent !== lastBlockParent) chunks.push(PARA_MARKER);
       chunks.push(text);
       lastBlockParent = blockParent;
     }
@@ -207,7 +210,7 @@ function extractWordsWithPositions(root) {
     if (node.nodeType !== Node.TEXT_NODE) continue;
     const blockParent = getBlockAncestor(node);
     if (lastBlockParent !== null && blockParent !== lastBlockParent) {
-      words.push('¶');
+      words.push(PARA_MARKER);
       positions.push({ node: null, start: 0, end: 0, marker: true });
     }
     lastBlockParent = blockParent;
@@ -629,7 +632,7 @@ function buildOverlay() {
     function commit() {
       const val = parseInt(input.value, 10);
       let idx = isNaN(val) ? savedIndex : Math.max(0, Math.min(val, total - 1));
-      while (idx < total - 1 && WR.words[idx] === '¶') idx++;
+      while (idx < total - 1 && WR.words[idx] === PARA_MARKER) idx++;
       WR.wordIndex = idx;
       progressText.textContent = `${WR.wordIndex} / ${total}`;
       if (!wasPaused) resumeSession(); else updateProgress();
@@ -800,7 +803,7 @@ function renderChunkInOverlay(chunk) {
   if (!WR.shadowRoot || !chunk.length) return;
 
   // Paragraph break — clear display and skip animation
-  if (chunk[0] === '¶') {
+  if (chunk[0] === PARA_MARKER) {
     WR.shadowRoot.querySelector('.wr-word-left').textContent  = '';
     WR.shadowRoot.querySelector('.wr-word-focus').textContent = '';
     WR.shadowRoot.querySelector('.wr-word-right').textContent = '';
@@ -812,7 +815,7 @@ function renderChunkInOverlay(chunk) {
   WR.shadowRoot.querySelector('.wr-word-left').textContent  = before;
   WR.shadowRoot.querySelector('.wr-word-focus').textContent = focus;
   WR.shadowRoot.querySelector('.wr-word-right').textContent = after;
-  const second = chunk[1] && chunk[1] !== '¶' ? chunk[1] : '';
+  const second = chunk[1] && chunk[1] !== PARA_MARKER ? chunk[1] : '';
   WR.shadowRoot.querySelector('.wr-word-two').textContent   = second ? ' ' + second : '';
 
   const el = WR.shadowRoot.querySelector('.wr-word-display');
@@ -886,40 +889,35 @@ function tick() {
 // Session lifecycle
 // ---------------------------------------------------------------------------
 
-async function startSession(wpm, source, customText) {
-  if (WR.active) stopSession();
-
-  WR.lastStartParams = { wpm, source, customText };
-
-  // Save focus so we can restore it on close
-  WR.previousFocus = document.activeElement;
-
-  // Load display settings from storage
-  const settings = await browser.storage.local.get([
+async function loadSessionSettings() {
+  const s = await browser.storage.local.get([
     'wordsPerChunk', 'displayMode', 'fontSize', 'fontFamily', 'theme', 'orpColor', 'skipShortWords',
   ]);
-  const wordsPerChunk  = settings.wordsPerChunk || 1;
-  const displayMode    = settings.displayMode   || 'overlay';
-  const fontSize       = settings.fontSize      || 48;
-  const fontFamily     = settings.fontFamily    || 'system';
-  const theme          = settings.theme         || 'dark';
-  const orpColor       = settings.orpColor      || '#ef5350';
-  const skipShort      = !!settings.skipShortWords;
+  return {
+    wordsPerChunk: s.wordsPerChunk || 1,
+    displayMode:   s.displayMode   || 'overlay',
+    fontSize:      s.fontSize      || 48,
+    fontFamily:    s.fontFamily    || 'system',
+    theme:         s.theme         || 'dark',
+    orpColor:      s.orpColor      || '#ef5350',
+    skipShort:     !!s.skipShortWords,
+  };
+}
 
-  // Extract words (+ position map for highlight mode on page content)
+function buildSessionWords(displayMode, source, customText, skipShort) {
   let words, positions;
+
   if (displayMode === 'highlight' && source === 'page') {
     const key = pageKey();
     if (!_posCache || _posCacheKey !== key) {
       _posCache    = extractWordsWithPositions(getContentRoot());
       _posCacheKey = key;
     }
-    const result = _posCache;
-    words     = result.words;
-    positions = result.positions;
+    words     = _posCache.words;
+    positions = _posCache.positions;
     if (skipShort) {
       const filtered = words.reduce((acc, w, i) => {
-        if (w === '¶' || w.replace(/\W/g, '').length > 2) acc.push({ w, pos: positions[i] });
+        if (w === PARA_MARKER || w.replace(/\W/g, '').length > 2) acc.push({ w, pos: positions[i] });
         return acc;
       }, []);
       words     = filtered.map(x => x.w);
@@ -927,55 +925,64 @@ async function startSession(wpm, source, customText) {
     }
   } else {
     const raw = processWords(extractText(source, customText));
-    words     = skipShort ? raw.filter(w => w === '¶' || w.replace(/\W/g, '').length > 2) : raw;
+    words     = skipShort ? raw.filter(w => w === PARA_MARKER || w.replace(/\W/g, '').length > 2) : raw;
     positions = null;
   }
+
+  return { words, positions };
+}
+
+async function startSession(wpm, source, customText) {
+  if (WR.active) stopSession();
+
+  WR.lastStartParams = { wpm, source, customText };
+  WR.previousFocus   = document.activeElement;
+
+  const cfg = await loadSessionSettings();
+  const { words, positions } = buildSessionWords(cfg.displayMode, source, customText, cfg.skipShort);
 
   if (words.length === 0) {
     showPageToast(t('noWordsFound'));
     return;
   }
 
-  WR.words            = words;
-  WR.wordPositions    = positions;
-  WR.wpm              = wpm;
-  WR.wordsPerChunk    = wordsPerChunk;
-  WR.displayMode      = displayMode;
-  WR.intervalMs       = Math.round(60000 / wpm);
-  WR.active           = true;
-  WR.paused           = false;
-  WR.lastTickTime     = null;
+  WR.words                 = words;
+  WR.wordPositions         = positions;
+  WR.wpm                   = wpm;
+  WR.wordsPerChunk         = cfg.wordsPerChunk;
+  WR.displayMode           = cfg.displayMode;
+  WR.intervalMs            = Math.round(60000 / wpm);
+  WR.active                = true;
+  WR.paused                = false;
+  WR.lastTickTime          = null;
   WR.lastScheduledDuration = WR.intervalMs;
-  WR.sessionStartTime = Date.now();
+  WR.sessionStartTime      = Date.now();
 
   WR.wordIndex = source === 'page' ? await restorePosition(words) : 0;
-
   if (WR.wordIndex > 0) {
     showPageToast(tParam('toastResuming', { current: WR.wordIndex, total: words.length }));
   }
 
-  if (displayMode === 'highlight') {
+  if (cfg.displayMode === 'highlight') {
     buildHighlightUI();
     if (WR.highlightBox) {
-      WR.highlightBox.style.background  = hexToRgba(orpColor, 0.28);
-      WR.highlightBox.style.borderColor = hexToRgba(orpColor, 0.65);
+      WR.highlightBox.style.background  = hexToRgba(cfg.orpColor, 0.28);
+      WR.highlightBox.style.borderColor = hexToRgba(cfg.orpColor, 0.65);
     }
     if (WR.highlightBox2) {
-      WR.highlightBox2.style.background  = hexToRgba(orpColor, 0.18);
-      WR.highlightBox2.style.borderColor = hexToRgba(orpColor, 0.45);
+      WR.highlightBox2.style.background  = hexToRgba(cfg.orpColor, 0.18);
+      WR.highlightBox2.style.borderColor = hexToRgba(cfg.orpColor, 0.45);
     }
   } else {
     buildOverlay();
-    // Remove done-message and restart button from a previous finished session
     WR.shadowRoot?.querySelector('.wr-done-msg')?.remove();
     const prevRestart = WR.shadowRoot?.querySelector('.wr-restart-btn');
     if (prevRestart) prevRestart.style.display = 'none';
-    applyTheme(theme, orpColor, fontSize, fontFamily);
+    applyTheme(cfg.theme, cfg.orpColor, cfg.fontSize, cfg.fontFamily);
     showOverlay();
     if (WR.shadowRoot) {
-      WR.shadowRoot.querySelector('.wr-wpm-val').textContent   = wpm;
-      WR.shadowRoot.querySelector('.wr-wpm-slider').value      = wpm;
-      // Move focus into the overlay for keyboard accessibility
+      WR.shadowRoot.querySelector('.wr-wpm-val').textContent = wpm;
+      WR.shadowRoot.querySelector('.wr-wpm-slider').value    = wpm;
       WR.shadowRoot.querySelector('.wr-play-pause-btn')?.focus();
     }
     updatePlayPauseIcon();
@@ -983,17 +990,13 @@ async function startSession(wpm, source, customText) {
 
   attachKeyboard();
 
-  // Display first chunk immediately
-  const firstChunk = words.slice(WR.wordIndex, WR.wordIndex + wordsPerChunk);
-  if (displayMode === 'highlight') {
-    highlightWordAt(WR.wordIndex);
-  } else {
-    renderChunkInOverlay(firstChunk);
-  }
+  const firstChunk = words.slice(WR.wordIndex, WR.wordIndex + cfg.wordsPerChunk);
+  if (cfg.displayMode === 'highlight') highlightWordAt(WR.wordIndex);
+  else renderChunkInOverlay(firstChunk);
   WR.wordIndex += firstChunk.length;
   updateProgress();
 
-  const firstDuration = getWordDuration(firstChunk[0], WR.intervalMs);
+  const firstDuration      = getWordDuration(firstChunk[0], WR.intervalMs);
   WR.lastTickTime          = Date.now();
   WR.lastScheduledDuration = firstDuration;
   scheduleNext(firstDuration);

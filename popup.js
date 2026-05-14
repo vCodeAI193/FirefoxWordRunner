@@ -222,6 +222,70 @@ function importSettings(file) {
 }
 
 // ---------------------------------------------------------------------------
+// Settings UI helpers
+// ---------------------------------------------------------------------------
+
+function restoreSettingsUI(data, els) {
+  const savedWpm = data.wpm || 300;
+  els.slider.value = savedWpm;
+  els.wpmDisplay.textContent = savedWpm;
+  els.slider.setAttribute('aria-valuenow', savedWpm);
+
+  if (data.wordsPerChunk === 2) document.getElementById('radio-two-words').checked = true;
+  if (data.displayMode === 'highlight') document.getElementById('radio-highlight').checked = true;
+
+  if (data.fontSize) {
+    els.fontSlider.value = data.fontSize;
+    els.fontSlider.setAttribute('aria-valuenow', data.fontSize);
+    els.fontDisplay.textContent = data.fontSize;
+  }
+  if (data.fontFamily)    els.fontFamilySelect.value  = data.fontFamily;
+  if (data.theme)         els.themeSelect.value       = data.theme;
+  if (data.orpColor)      els.orpColor.value          = data.orpColor;
+  if (data.skipShortWords) els.skipShortWords.checked = true;
+}
+
+function attachPersistListeners(els) {
+  const saveWpm = debounce(val => browser.storage.local.set({ wpm: val }), 300);
+  els.slider.addEventListener('input', () => {
+    const val = parseInt(els.slider.value, 10);
+    els.wpmDisplay.textContent = val;
+    els.slider.setAttribute('aria-valuenow', val);
+    saveWpm(val);
+  });
+
+  els.fontSlider.addEventListener('input', () => {
+    const val = parseInt(els.fontSlider.value, 10);
+    els.fontDisplay.textContent = val;
+    els.fontSlider.setAttribute('aria-valuenow', val);
+    browser.storage.local.set({ fontSize: val });
+  });
+
+  els.fontFamilySelect.addEventListener('change', () =>
+    browser.storage.local.set({ fontFamily: els.fontFamilySelect.value }));
+
+  els.themeSelect.addEventListener('change', () =>
+    browser.storage.local.set({ theme: els.themeSelect.value }));
+
+  els.orpColor.addEventListener('input', () =>
+    browser.storage.local.set({ orpColor: els.orpColor.value }));
+
+  els.skipShortWords.addEventListener('change', () =>
+    browser.storage.local.set({ skipShortWords: els.skipShortWords.checked }));
+
+  document.querySelectorAll('input[name="displayMode"]').forEach(r =>
+    r.addEventListener('change', () => browser.storage.local.set({ displayMode: r.value })));
+
+  document.querySelectorAll('input[name="wordsPerChunk"]').forEach(r =>
+    r.addEventListener('change', () =>
+      browser.storage.local.set({ wordsPerChunk: parseInt(r.value, 10) })));
+
+  document.querySelectorAll('input[name="source"]').forEach(r =>
+    r.addEventListener('change', () =>
+      els.customSection.classList.toggle('hidden', !els.radioCustom.checked)));
+}
+
+// ---------------------------------------------------------------------------
 // Main
 // ---------------------------------------------------------------------------
 
@@ -229,48 +293,28 @@ document.addEventListener('DOMContentLoaded', async () => {
   document.documentElement.lang = browser.i18n.getUILanguage().split('-')[0];
   applyI18n();
 
-  // Element refs
-  const slider          = document.getElementById('wpm-slider');
-  const wpmDisplay      = document.getElementById('wpm-display');
-  const startBtn        = document.getElementById('start-btn');
-  const radioCustom     = document.getElementById('radio-custom');
-  const customSection   = document.getElementById('custom-text-section');
-  const customText      = document.getElementById('custom-text');
-  const fontSlider      = document.getElementById('font-size-slider');
-  const fontDisplay     = document.getElementById('font-size-display');
-  const fontFamilySelect = document.getElementById('font-family-select');
-  const themeSelect     = document.getElementById('theme-select');
-  const orpColor        = document.getElementById('orp-color');
-  const skipShortWords  = document.getElementById('skip-short-words');
-  const addToListBtn    = document.getElementById('add-to-list-btn');
+  const els = {
+    slider:          document.getElementById('wpm-slider'),
+    wpmDisplay:      document.getElementById('wpm-display'),
+    startBtn:        document.getElementById('start-btn'),
+    radioCustom:     document.getElementById('radio-custom'),
+    customSection:   document.getElementById('custom-text-section'),
+    customText:      document.getElementById('custom-text'),
+    fontSlider:      document.getElementById('font-size-slider'),
+    fontDisplay:     document.getElementById('font-size-display'),
+    fontFamilySelect: document.getElementById('font-family-select'),
+    themeSelect:     document.getElementById('theme-select'),
+    orpColor:        document.getElementById('orp-color'),
+    skipShortWords:  document.getElementById('skip-short-words'),
+    addToListBtn:    document.getElementById('add-to-list-btn'),
+  };
 
-  // ── Load saved settings ──
   const data = await browser.storage.local.get([
     'wpm', 'wordsPerChunk', 'displayMode', 'fontSize', 'fontFamily',
     'theme', 'orpColor', 'skipShortWords', 'stats',
   ]);
 
-  const savedWpm = data.wpm || 300;
-  slider.value = savedWpm;
-  wpmDisplay.textContent = savedWpm;
-  slider.setAttribute('aria-valuenow', savedWpm);
-
-  if (data.wordsPerChunk === 2) {
-    document.getElementById('radio-two-words').checked = true;
-  }
-  if (data.displayMode === 'highlight') {
-    document.getElementById('radio-highlight').checked = true;
-  }
-  if (data.fontSize) {
-    fontSlider.value = data.fontSize;
-    fontSlider.setAttribute('aria-valuenow', data.fontSize);
-    fontDisplay.textContent = data.fontSize;
-  }
-  if (data.fontFamily) fontFamilySelect.value = data.fontFamily;
-  if (data.theme) themeSelect.value = data.theme;
-  if (data.orpColor) orpColor.value = data.orpColor;
-  if (data.skipShortWords) skipShortWords.checked = true;
-
+  restoreSettingsUI(data, els);
   displayStats(data.stats);
 
   document.getElementById('clear-stats-btn').addEventListener('click', async () => {
@@ -279,54 +323,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     showStatus(t('statsCleared'));
   });
 
-  // ── Persist settings on change ──
-  const saveWpm = debounce(val => browser.storage.local.set({ wpm: val }), 300);
-  slider.addEventListener('input', () => {
-    const val = parseInt(slider.value, 10);
-    wpmDisplay.textContent = val;
-    slider.setAttribute('aria-valuenow', val);
-    saveWpm(val);
-  });
-
-  fontSlider.addEventListener('input', () => {
-    const val = parseInt(fontSlider.value, 10);
-    fontDisplay.textContent = val;
-    fontSlider.setAttribute('aria-valuenow', val);
-    browser.storage.local.set({ fontSize: val });
-  });
-
-  fontFamilySelect.addEventListener('change', () => {
-    browser.storage.local.set({ fontFamily: fontFamilySelect.value });
-  });
-
-  themeSelect.addEventListener('change', () => {
-    browser.storage.local.set({ theme: themeSelect.value });
-  });
-
-  orpColor.addEventListener('input', () => {
-    browser.storage.local.set({ orpColor: orpColor.value });
-  });
-
-  skipShortWords.addEventListener('change', () => {
-    browser.storage.local.set({ skipShortWords: skipShortWords.checked });
-  });
-
-  document.querySelectorAll('input[name="displayMode"]').forEach(r => {
-    r.addEventListener('change', () => browser.storage.local.set({ displayMode: r.value }));
-  });
-
-  document.querySelectorAll('input[name="wordsPerChunk"]').forEach(r => {
-    r.addEventListener('change', () =>
-      browser.storage.local.set({ wordsPerChunk: parseInt(r.value, 10) })
-    );
-  });
-
-  // ── Custom text textarea visibility ──
-  document.querySelectorAll('input[name="source"]').forEach(r => {
-    r.addEventListener('change', () => {
-      customSection.classList.toggle('hidden', !radioCustom.checked);
-    });
-  });
+  attachPersistListeners(els);
 
   // ── Ping content script ──
   let currentState = null;
@@ -338,53 +335,44 @@ document.addEventListener('DOMContentLoaded', async () => {
     currentState = await browser.tabs.sendMessage(activeTab.id, { action: 'ping' });
   } catch {
     showStatus(t('errorPage'), 'error');
-    startBtn.disabled = true;
+    els.startBtn.disabled = true;
   }
 
   updateUI(currentState);
 
-  // ── Reading list ──
   renderReadingList();
-
-  if (addToListBtn) {
-    addToListBtn.addEventListener('click', () => addCurrentPageToList(activeTab));
+  if (els.addToListBtn) {
+    els.addToListBtn.addEventListener('click', () => addCurrentPageToList(activeTab));
   }
 
   const exportBtn  = document.getElementById('export-settings-btn');
   const importBtn  = document.getElementById('import-settings-btn');
   const importFile = document.getElementById('import-settings-file');
-
   if (exportBtn) exportBtn.addEventListener('click', exportSettings);
   if (importBtn) importBtn.addEventListener('click', () => importFile?.click());
   if (importFile) importFile.addEventListener('change', () => {
     if (importFile.files[0]) importSettings(importFile.files[0]);
   });
 
-  if (startBtn.disabled) return;
+  if (els.startBtn.disabled) return;
 
   // ── Start / pause / resume ──
-  startBtn.addEventListener('click', async () => {
+  els.startBtn.addEventListener('click', async () => {
     if (!activeTab) return;
 
-    const wpm = parseInt(slider.value, 10);
+    const wpm    = parseInt(els.slider.value, 10);
     const source = document.querySelector('input[name="source"]:checked').value;
 
     try {
       if (currentState && currentState.active) {
-        if (currentState.paused) {
-          currentState = await browser.tabs.sendMessage(activeTab.id, { action: 'resume' });
-        } else {
-          currentState = await browser.tabs.sendMessage(activeTab.id, { action: 'pause' });
-        }
+        currentState = await browser.tabs.sendMessage(activeTab.id,
+          { action: currentState.paused ? 'resume' : 'pause' });
         updateUI(currentState);
       } else {
         const payload = { action: 'start', wpm, source };
         if (source === 'custom') {
-          payload.text = customText.value.trim();
-          if (!payload.text) {
-            showStatus(t('customTextEmpty'), 'error');
-            return;
-          }
+          payload.text = els.customText.value.trim();
+          if (!payload.text) { showStatus(t('customTextEmpty'), 'error'); return; }
         }
         await browser.tabs.sendMessage(activeTab.id, payload);
         window.close();
