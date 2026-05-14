@@ -10,14 +10,17 @@ describe('SETTINGS_VALIDATORS', () => {
     test('rejects float',        () => expect(V.wpm(300.5)).toBe(false));
     test('rejects string',       () => expect(V.wpm('300')).toBe(false));
     test('rejects null',         () => expect(V.wpm(null)).toBe(false));
+    test('rejects NaN',          () => expect(V.wpm(NaN)).toBe(false));
+    test('rejects Infinity',     () => expect(V.wpm(Infinity)).toBe(false));
   });
 
   describe('wordsPerChunk', () => {
-    test('accepts 1',   () => expect(V.wordsPerChunk(1)).toBe(true));
-    test('accepts 2',   () => expect(V.wordsPerChunk(2)).toBe(true));
-    test('rejects 0',   () => expect(V.wordsPerChunk(0)).toBe(false));
-    test('rejects 3',   () => expect(V.wordsPerChunk(3)).toBe(false));
-    test('rejects "1"', () => expect(V.wordsPerChunk('1')).toBe(false));
+    test('accepts 1',    () => expect(V.wordsPerChunk(1)).toBe(true));
+    test('accepts 2',    () => expect(V.wordsPerChunk(2)).toBe(true));
+    test('rejects 0',    () => expect(V.wordsPerChunk(0)).toBe(false));
+    test('rejects 3',    () => expect(V.wordsPerChunk(3)).toBe(false));
+    test('rejects "1"',  () => expect(V.wordsPerChunk('1')).toBe(false));
+    test('rejects NaN',  () => expect(V.wordsPerChunk(NaN)).toBe(false));
   });
 
   describe('displayMode', () => {
@@ -35,6 +38,7 @@ describe('SETTINGS_VALIDATORS', () => {
     test('rejects 97',         () => expect(V.fontSize(97)).toBe(false));
     test('rejects float',      () => expect(V.fontSize(48.5)).toBe(false));
     test('rejects string',     () => expect(V.fontSize('48')).toBe(false));
+    test('rejects NaN',        () => expect(V.fontSize(NaN)).toBe(false));
   });
 
   describe('fontFamily', () => {
@@ -62,6 +66,7 @@ describe('SETTINGS_VALIDATORS', () => {
     test('rejects invalid chars', () => expect(V.orpColor('#gggggg')).toBe(false));
     test('rejects no hash',       () => expect(V.orpColor('ef5350')).toBe(false));
     test('rejects number',        () => expect(V.orpColor(0xff0000)).toBe(false));
+    test('rejects 7-hex-digit string (too long)', () => expect(V.orpColor('#ffffff0')).toBe(false));
   });
 
   describe('skipShortWords', () => {
@@ -70,5 +75,6 @@ describe('SETTINGS_VALIDATORS', () => {
     test('rejects "true"', () => expect(V.skipShortWords('true')).toBe(false));
     test('rejects 1',      () => expect(V.skipShortWords(1)).toBe(false));
     test('rejects null',   () => expect(V.skipShortWords(null)).toBe(false));
+    test('rejects 0',      () => expect(V.skipShortWords(0)).toBe(false));
   });
 });

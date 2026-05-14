@@ -64,6 +64,15 @@ describe('processWords', () => {
   test('handles non-breaking spaces as word separators', () => {
     expect(processWords('hello world')).toEqual(['hello', 'world']);
   });
+
+  test('preserves paragraph marker ¶ as its own token', () => {
+    expect(processWords('hello ¶ world')).toEqual(['hello', '¶', 'world']);
+  });
+
+  test('26-char token is truncated (exact boundary above 25)', () => {
+    const word = 'b'.repeat(26);
+    expect(processWords(word)).toEqual(['b'.repeat(22) + '...']);
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -242,6 +251,16 @@ describe('getWordDuration', () => {
     const high = getWordDuration('hello', 400);
     expect(high).toBeGreaterThan(low);
   });
+
+  test('last char of multi-punctuation token determines sentenceEnd ("what?!")', () => {
+    // 'what?!' → last char '!' → sentenceEnd=true; letters: w,h,a,t = 4 → m=1.0+0.6=1.6
+    expect(getWordDuration('what?!', 200)).toBe(Math.round(200 * 1.6));
+  });
+
+  test('non-ASCII letters are excluded from length count ("café" = 3 ASCII letters)', () => {
+    // 'café'.replace(/[^a-zA-Z]/g,'') = 'caf' → 3 letters → m=1.0
+    expect(getWordDuration('café', 200)).toBe(Math.round(200 * 1.0));
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -279,5 +298,9 @@ describe('estimateReadingMs', () => {
 
   test('returns a positive number for valid inputs', () => {
     expect(estimateReadingMs(1, 100)).toBeGreaterThan(0);
+  });
+
+  test('returns 0 for negative word count', () => {
+    expect(estimateReadingMs(-5, 300)).toBe(0);
   });
 });
