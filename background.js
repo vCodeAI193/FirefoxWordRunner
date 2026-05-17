@@ -1,3 +1,5 @@
+const DEFAULT_WPM = 300;
+
 browser.runtime.onInstalled.addListener(() => {
   browser.contextMenus.create({
     id: 'wr-read-selection',
@@ -8,7 +10,7 @@ browser.runtime.onInstalled.addListener(() => {
 
 browser.contextMenus.onClicked.addListener(async (info, tab) => {
   if (info.menuItemId !== 'wr-read-selection') return;
-  const { wpm = 300 } = await browser.storage.local.get('wpm');
+  const { wpm = DEFAULT_WPM } = await browser.storage.local.get('wpm');
   try {
     await browser.tabs.sendMessage(tab.id, { action: 'start', wpm, source: 'selection' });
   } catch {
@@ -22,7 +24,7 @@ browser.commands.onCommand.addListener(async (command) => {
   const tabs = await browser.tabs.query({ active: true, currentWindow: true });
   const tab = tabs[0];
   if (!tab) return;
-  const { wpm = 300 } = await browser.storage.local.get('wpm');
+  const { wpm = DEFAULT_WPM } = await browser.storage.local.get('wpm');
   try {
     await browser.tabs.sendMessage(tab.id, { action: 'start', wpm, source: 'page' });
   } catch {

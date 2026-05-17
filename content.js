@@ -98,6 +98,9 @@ browser.runtime.onMessage.addListener((message, _sender, sendResponse) => {
       sendResponse({ count });
       break;
     }
+    default:
+      sendResponse({ error: 'unknown action' });
+      break;
   }
   return true;
 });
