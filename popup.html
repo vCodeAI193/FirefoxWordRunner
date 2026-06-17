@@ -53,10 +53,19 @@
         <span data-i18n="slowLabel"></span>
         <span data-i18n="fastLabel"></span>
       </div>
+      <div class="preset-btns" role="group" aria-label="Speed presets">
+        <button class="preset-btn" type="button" data-wpm="150" data-i18n="presetSlow"></button>
+        <button class="preset-btn" type="button" data-wpm="300" data-i18n="presetNormal"></button>
+        <button class="preset-btn" type="button" data-wpm="500" data-i18n="presetFast"></button>
+        <button class="preset-btn" type="button" data-wpm="750" data-i18n="presetExpert"></button>
+      </div>
     </section>
 
     <!-- Status bar -->
     <div id="status-bar" class="status-bar hidden" role="status" aria-live="polite"></div>
+
+    <!-- Word count preview -->
+    <p id="word-count-preview" class="word-count-preview hidden" aria-live="polite"></p>
 
     <!-- Start button -->
     <button id="start-btn" class="start-btn" type="button" data-i18n="startReading"></button>
@@ -163,6 +172,18 @@
       <summary class="collapsible-summary" data-i18n="statsLabel"></summary>
       <p id="stats-content" class="stats-content"></p>
       <button id="clear-stats-btn" class="rl-btn" type="button" data-i18n="clearStats"></button>
+    </details>
+
+    <!-- Keyboard Shortcuts -->
+    <details class="collapsible-section" id="shortcuts-details">
+      <summary class="collapsible-summary" data-i18n="shortcutsLabel"></summary>
+      <ul class="shortcuts-list" aria-label="Keyboard shortcuts">
+        <li><span data-i18n="shortcutStartStop"></span></li>
+        <li><span data-i18n="shortcutPause"></span></li>
+        <li><span data-i18n="shortcutEsc"></span></li>
+        <li><span data-i18n="shortcutSkip"></span></li>
+        <li><span data-i18n="shortcutSpeed"></span></li>
+      </ul>
     </details>
 
   </main>

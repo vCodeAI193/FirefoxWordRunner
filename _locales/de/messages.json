@@ -64,5 +64,16 @@
   "noSelectionFound":       { "message": "Kein Text auf der Seite ausgewählt." },
   "restartReading":         { "message": "Erneut lesen" },
   "clearStats":             { "message": "Statistik zurücksetzen" },
-  "statsCleared":           { "message": "Statistik zurückgesetzt." }
+  "statsCleared":           { "message": "Statistik zurückgesetzt." },
+  "presetSlow":             { "message": "Langsam" },
+  "presetNormal":           { "message": "Normal" },
+  "presetFast":             { "message": "Schnell" },
+  "presetExpert":           { "message": "Experte" },
+  "wordCountPreview":       { "message": "{count} Wörter · ~{min} min" },
+  "shortcutsLabel":         { "message": "Tastenkürzel" },
+  "shortcutStartStop":      { "message": "Alt+W — Starten / Stoppen" },
+  "shortcutPause":          { "message": "Leertaste — Pause / Fortsetzen" },
+  "shortcutEsc":            { "message": "Esc — Stoppen" },
+  "shortcutSkip":           { "message": "← → — Zurück / Vorwärts springen" },
+  "shortcutSpeed":          { "message": "+ / − — Schneller / Langsamer" }
 }

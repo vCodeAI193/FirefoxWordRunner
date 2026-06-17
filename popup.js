@@ -245,13 +245,31 @@ function restoreSettingsUI(data, els) {
   if (data.skipShortWords) els.skipShortWords.checked = true;
 }
 
+function updatePresetActive(wpm) {
+  document.querySelectorAll('.preset-btn').forEach(btn => {
+    btn.classList.toggle('active', parseInt(btn.dataset.wpm, 10) === wpm);
+  });
+}
+
 function attachPersistListeners(els) {
   const saveWpm = debounce(val => browser.storage.local.set({ wpm: val }), 300);
   els.slider.addEventListener('input', () => {
     const val = parseInt(els.slider.value, 10);
     els.wpmDisplay.textContent = val;
     els.slider.setAttribute('aria-valuenow', val);
+    updatePresetActive(val);
     saveWpm(val);
+  });
+
+  document.querySelectorAll('.preset-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const val = parseInt(btn.dataset.wpm, 10);
+      els.slider.value = val;
+      els.wpmDisplay.textContent = val;
+      els.slider.setAttribute('aria-valuenow', val);
+      updatePresetActive(val);
+      browser.storage.local.set({ wpm: val });
+    });
   });
 
   els.fontSlider.addEventListener('input', () => {
@@ -315,6 +333,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   ]);
 
   restoreSettingsUI(data, els);
+  updatePresetActive(data.wpm || 300);
   displayStats(data.stats);
 
   document.getElementById('clear-stats-btn').addEventListener('click', async () => {
@@ -339,6 +358,25 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   updateUI(currentState);
+
+  // ── Word count preview ──
+  if (activeTab) {
+    try {
+      const resp = await browser.tabs.sendMessage(activeTab.id, { action: 'countWords' });
+      const count = resp?.count || 0;
+      if (count > 0) {
+        const wpm = data.wpm || 300;
+        const minEst = Math.ceil(count / wpm);
+        const preview = document.getElementById('word-count-preview');
+        if (preview) {
+          preview.textContent = t('wordCountPreview')
+            .replace('{count}', count.toLocaleString())
+            .replace('{min}', minEst);
+          preview.classList.remove('hidden');
+        }
+      }
+    } catch { /* page without content script */ }
+  }
 
   renderReadingList();
   if (els.addToListBtn) {
