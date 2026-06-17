@@ -65,6 +65,8 @@
   "restartReading":         { "message": "Erneut lesen" },
   "clearStats":             { "message": "Statistik zurücksetzen" },
   "statsCleared":           { "message": "Statistik zurückgesetzt." },
+  "openAndReadLabel":       { "message": "▶ Lesen" },
+  "openAndReadTitle":       { "message": "Seite öffnen und automatisch lesen" },
   "presetSlow":             { "message": "Langsam" },
   "presetNormal":           { "message": "Normal" },
   "presetFast":             { "message": "Schnell" },

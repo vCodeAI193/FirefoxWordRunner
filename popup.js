@@ -142,6 +142,18 @@ async function renderReadingList() {
     });
     row.appendChild(openBtn);
 
+    const openReadBtn = document.createElement('button');
+    openReadBtn.className = 'rl-btn rl-open-read';
+    openReadBtn.type = 'button';
+    openReadBtn.textContent = t('openAndReadLabel');
+    openReadBtn.title = t('openAndReadTitle');
+    openReadBtn.addEventListener('click', async () => {
+      const { wpm = 300 } = await browser.storage.local.get('wpm');
+      browser.runtime.sendMessage({ action: 'openAndRead', url: item.url, wpm });
+      window.close();
+    });
+    row.appendChild(openReadBtn);
+
     const removeBtn = document.createElement('button');
     removeBtn.className = 'rl-btn';
     removeBtn.type = 'button';

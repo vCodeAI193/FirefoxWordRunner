@@ -1,5 +1,9 @@
 const DEFAULT_WPM = 300;
 
+// Tab IDs pending an auto-start after navigation completes.
+// Maps tabId → { wpm, source }
+const pendingAutoRead = new Map();
+
 browser.runtime.onInstalled.addListener(() => {
   browser.contextMenus.create({
     id: 'wr-read-selection',
@@ -30,4 +34,36 @@ browser.commands.onCommand.addListener(async (command) => {
   } catch {
     // Content script unavailable on this page type
   }
+});
+
+// "Open & Read" — called from popup when user clicks the reading-list open+start button.
+// We can't inject immediately because the tab is still loading, so we store the intent
+// and fire once the page is fully loaded.
+browser.runtime.onMessage.addListener((msg, sender, sendResponse) => {
+  if (msg.action !== 'openAndRead') return;
+  const { url, wpm, source = 'page' } = msg;
+  browser.tabs.create({ url }).then(tab => {
+    pendingAutoRead.set(tab.id, { wpm, source });
+    sendResponse({ ok: true });
+  }).catch(() => sendResponse({ ok: false }));
+  return true; // keep channel open for async sendResponse
+});
+
+browser.tabs.onUpdated.addListener((tabId, changeInfo) => {
+  if (changeInfo.status !== 'complete') return;
+  const pending = pendingAutoRead.get(tabId);
+  if (!pending) return;
+  pendingAutoRead.delete(tabId);
+  // Small delay so the content script has time to initialise
+  setTimeout(async () => {
+    try {
+      await browser.tabs.sendMessage(tabId, {
+        action: 'start',
+        wpm: pending.wpm,
+        source: pending.source,
+      });
+    } catch {
+      // Content script unavailable (e.g. PDF, restricted page)
+    }
+  }, 400);
 });
