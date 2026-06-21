@@ -26,6 +26,7 @@
   "fontMono":               { "message": "Mono" },
   "skipShortWordsLabel":    { "message": "Kurze Wörter überspringen (≤ 2 Buchstaben)" },
   "themeLabel":             { "message": "Thema" },
+  "themeAuto":              { "message": "Auto" },
   "themeDark":              { "message": "Dunkel" },
   "themeLight":             { "message": "Hell" },
   "orpColorLabel":          { "message": "ORP-Farbe" },

@@ -26,6 +26,7 @@
   "fontMono":               { "message": "Mono" },
   "skipShortWordsLabel":    { "message": "Skip short words (≤ 2 letters)" },
   "themeLabel":             { "message": "Theme" },
+  "themeAuto":              { "message": "Auto" },
   "themeDark":              { "message": "Dark" },
   "themeLight":             { "message": "Light" },
   "orpColorLabel":          { "message": "ORP Color" },

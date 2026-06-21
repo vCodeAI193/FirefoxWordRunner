@@ -52,7 +52,8 @@ describe('SETTINGS_VALIDATORS', () => {
   describe('theme', () => {
     test('accepts dark',  () => expect(V.theme('dark')).toBe(true));
     test('accepts light', () => expect(V.theme('light')).toBe(true));
-    test('rejects other', () => expect(V.theme('auto')).toBe(false));
+    test('accepts auto',  () => expect(V.theme('auto')).toBe(true));
+    test('rejects other', () => expect(V.theme('solarized')).toBe(false));
     test('rejects empty', () => expect(V.theme('')).toBe(false));
   });
 

@@ -666,7 +666,10 @@ function applyTheme(theme, orpColor, fontSize, fontFamily) {
   h.style.setProperty('--wr-font-size', `${fontSize}px`);
   h.style.setProperty('--wr-orp', orpColor);
   h.style.setProperty('--wr-font-family', FONT_FAMILY_MAP[fontFamily] || FONT_FAMILY_MAP.system);
-  if (theme === 'light') {
+  const effectiveTheme = theme === 'auto'
+    ? (window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark')
+    : theme;
+  if (effectiveTheme === 'light') {
     h.style.setProperty('--wr-bg',          'rgba(255, 255, 248, 0.97)');
     h.style.setProperty('--wr-text',         '#1a1a2e');
     h.style.setProperty('--wr-guide-color',  'rgba(0, 100, 160, 0.35)');
@@ -679,6 +682,11 @@ function applyTheme(theme, orpColor, fontSize, fontFamily) {
     h.style.setProperty('--wr-border',       'rgba(255,255,255,0.08)');
     h.style.setProperty('--wr-progress-bg',  'rgba(255,255,255,0.12)');
   }
+}
+
+function reapplyThemeOnSchemeChange() {
+  if (!WR.active || WR.displayMode !== 'overlay') return;
+  loadSessionSettings().then(cfg => applyTheme(cfg.theme, cfg.orpColor, cfg.fontSize, cfg.fontFamily));
 }
 
 function showOverlay() { WR.shadowHost.classList.add('active'); }
@@ -1189,9 +1197,11 @@ function detachKeyboard() {
 }
 
 // ---------------------------------------------------------------------------
-// Auto-pause on tab hide
+// Auto-pause on tab hide / re-apply theme on system scheme change
 // ---------------------------------------------------------------------------
 
 document.addEventListener('visibilitychange', () => {
   if (document.hidden && WR.active && !WR.paused) pauseSession();
 });
+
+window.matchMedia('(prefers-color-scheme: light)').addEventListener('change', reapplyThemeOnSchemeChange);
