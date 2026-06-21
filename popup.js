@@ -42,10 +42,48 @@ function displayStats(stats) {
   const avgWpm = stats.totalMs > 0
     ? Math.round(stats.totalWords / (stats.totalMs / 60000))
     : 0;
-  el.textContent =
+
+  el.innerHTML = '';
+
+  const summary = document.createElement('p');
+  summary.className = 'stats-summary';
+  summary.textContent =
     `${stats.totalWords.toLocaleString()} ${t('wordsReadLabel')} · ` +
     `${stats.sessions} ${t('sessionsLabel')} · ` +
     `Ø ${avgWpm} WPM`;
+  el.appendChild(summary);
+
+  const history = stats.history;
+  if (!history || history.length === 0) return;
+
+  const heading = document.createElement('p');
+  heading.className = 'stats-history-heading';
+  heading.textContent = t('historyLabel');
+  el.appendChild(heading);
+
+  const list = document.createElement('ul');
+  list.className = 'stats-history-list';
+  [...history].reverse().forEach(entry => {
+    const li = document.createElement('li');
+    li.className = 'stats-history-item';
+
+    const dateStr = new Date(entry.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+    const timeStr = new Date(entry.date).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
+
+    const meta = document.createElement('span');
+    meta.className = 'stats-history-meta';
+    meta.textContent = `${dateStr} ${timeStr} · ${entry.wordsRead.toLocaleString()} ${t('wordsLabel')} · ${entry.wpm} WPM`;
+
+    const title = document.createElement('span');
+    title.className = 'stats-history-title';
+    title.textContent = entry.title || entry.url;
+    title.title = entry.url;
+
+    li.appendChild(meta);
+    li.appendChild(title);
+    list.appendChild(li);
+  });
+  el.appendChild(list);
 }
 
 // ---------------------------------------------------------------------------

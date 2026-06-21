@@ -33,6 +33,7 @@
   "statsLabel":             { "message": "Statistiken" },
   "statsEmpty":             { "message": "Noch keine Statistiken" },
   "wordsReadLabel":         { "message": "Wörter gelesen" },
+  "historyLabel":           { "message": "Letzte Sitzungen" },
   "sessionsLabel":          { "message": "Sitzungen" },
   "readingListLabel":       { "message": "Leseliste" },
   "readingListEmpty":       { "message": "Leseliste ist leer" },

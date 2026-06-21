@@ -285,11 +285,22 @@ async function saveStats(wordsRead) {
   try {
     const data = await browser.storage.local.get('stats');
     const s = data.stats || {};
+    const history = s.history || [];
+    history.push({
+      date:      Date.now(),
+      url:       location.href,
+      title:     document.title || location.hostname,
+      wordsRead,
+      wpm:       WR.wpm,
+      durationMs: elapsed,
+    });
+    if (history.length > 30) history.splice(0, history.length - 30);
     await browser.storage.local.set({
       stats: {
         totalWords: (s.totalWords || 0) + wordsRead,
         sessions:   (s.sessions   || 0) + 1,
         totalMs:    (s.totalMs    || 0) + elapsed,
+        history,
       },
     });
   } catch { /* storage unavailable */ }
