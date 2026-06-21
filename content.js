@@ -312,6 +312,10 @@ function formatTimeRemaining(wordsLeft, wpm) {
 
 // hexToRgba is defined in lib/utils.js (loaded before this script)
 
+function setBadge(text, color = '#4fc3f7') {
+  browser.runtime.sendMessage({ action: 'setBadge', text, color }).catch(() => {});
+}
+
 function tParam(key, params) {
   let msg = browser.i18n.getMessage(key) || key;
   Object.entries(params).forEach(([k, v]) => { msg = msg.replace(`{${k}}`, v); });
@@ -999,6 +1003,7 @@ async function startSession(wpm, source, customText) {
     updatePlayPauseIcon();
   }
 
+  setBadge('▶');
   attachKeyboard();
 
   const firstChunk = words.slice(WR.wordIndex, WR.wordIndex + cfg.wordsPerChunk);
@@ -1022,6 +1027,7 @@ function pauseSession() {
   updatePlayPauseIcon();
   updateHighlightControls();
   savePosition();
+  setBadge('⏸', '#ff9800');
   showPageToast(t('toastPositionSaved'));
 }
 
@@ -1031,6 +1037,7 @@ function resumeSession() {
   updatePlayPauseIcon();
   updateHighlightControls();
   WR.lastTickTime = null;
+  setBadge('▶');
   scheduleNext(WR.intervalMs);
 }
 
@@ -1050,6 +1057,7 @@ function stopSession() {
   WR.sessionStartTime      = null;
   WR.lastHighlightedIndex  = -1;
 
+  setBadge('');
   if (WR.displayMode === 'highlight') {
     removeHighlightUI();
   } else {
@@ -1118,6 +1126,7 @@ function finishSession() {
     WR.shadowRoot.querySelector('.wr-time-remaining').textContent = '';
   }
 
+  setBadge('');
   WR.previousFocus?.focus();
   WR.previousFocus = null;
   attachKeyboard(); // keep Escape active to close overlay/controls

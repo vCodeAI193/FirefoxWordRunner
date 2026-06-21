@@ -36,6 +36,16 @@ browser.commands.onCommand.addListener(async (command) => {
   }
 });
 
+// Badge updates from content script (can't call browserAction API from content scripts directly)
+browser.runtime.onMessage.addListener((msg, sender, sendResponse) => {
+  if (msg.action !== 'setBadge') return;
+  const tabId = sender.tab?.id;
+  if (tabId == null) { sendResponse({ ok: false }); return; }
+  browser.browserAction.setBadgeText({ text: msg.text, tabId });
+  browser.browserAction.setBadgeBackgroundColor({ color: msg.color || '#4fc3f7', tabId });
+  sendResponse({ ok: true });
+});
+
 // "Open & Read" — called from popup when user clicks the reading-list open+start button.
 // We can't inject immediately because the tab is still loading, so we store the intent
 // and fire once the page is fully loaded.
