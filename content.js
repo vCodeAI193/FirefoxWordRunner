@@ -1154,6 +1154,13 @@ function finishSession() {
     WR.shadowRoot.querySelector('.wr-time-remaining').textContent = '';
   }
 
+  // Clear word data — session is over. Restart button uses WR.lastStartParams, not WR.words.
+  // Clearing prevents stopSession() (triggered by Escape on the done-screen) from
+  // saving a stale end-of-array position via savePosition().
+  WR.words         = [];
+  WR.wordPositions = null;
+  WR.wordIndex     = 0;
+
   setBadge('');
   WR.previousFocus?.focus();
   WR.previousFocus = null;
