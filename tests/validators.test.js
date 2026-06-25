@@ -12,6 +12,7 @@ describe('SETTINGS_VALIDATORS', () => {
     test('rejects null',         () => expect(V.wpm(null)).toBe(false));
     test('rejects NaN',          () => expect(V.wpm(NaN)).toBe(false));
     test('rejects Infinity',     () => expect(V.wpm(Infinity)).toBe(false));
+    test('rejects 0',            () => expect(V.wpm(0)).toBe(false));
   });
 
   describe('wordsPerChunk', () => {
@@ -39,6 +40,7 @@ describe('SETTINGS_VALIDATORS', () => {
     test('rejects float',      () => expect(V.fontSize(48.5)).toBe(false));
     test('rejects string',     () => expect(V.fontSize('48')).toBe(false));
     test('rejects NaN',        () => expect(V.fontSize(NaN)).toBe(false));
+    test('rejects 0',          () => expect(V.fontSize(0)).toBe(false));
   });
 
   describe('fontFamily', () => {
@@ -68,6 +70,7 @@ describe('SETTINGS_VALIDATORS', () => {
     test('rejects no hash',       () => expect(V.orpColor('ef5350')).toBe(false));
     test('rejects number',        () => expect(V.orpColor(0xff0000)).toBe(false));
     test('rejects 7-hex-digit string (too long)', () => expect(V.orpColor('#ffffff0')).toBe(false));
+    test('rejects bare hash only',                () => expect(V.orpColor('#')).toBe(false));
   });
 
   describe('skipShortWords', () => {
@@ -91,4 +94,9 @@ describe('validateUrl', () => {
   test('rejects null',                     () => expect(validateUrl(null)).toBe(false));
   test('rejects non-URL string',           () => expect(validateUrl('not-a-url')).toBe(false));
   test('rejects protocol-relative URL',   () => expect(validateUrl('//example.com')).toBe(false));
+  test('accepts uppercase HTTPS protocol',  () => expect(validateUrl('HTTPS://example.com')).toBe(true));
+  test('accepts URL with credentials',      () => expect(validateUrl('https://user:pass@example.com')).toBe(true));
+  test('accepts URL with fragment',         () => expect(validateUrl('https://example.com#section')).toBe(true));
+  test('rejects URL with space in host',    () => expect(validateUrl('https://exam ple.com')).toBe(false));
+  test('rejects undefined',                 () => expect(validateUrl(undefined)).toBe(false));
 });

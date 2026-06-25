@@ -20,4 +20,12 @@ describe('hexToRgba', () => {
   test('converts pure white', () => {
     expect(hexToRgba('#ffffff', 0.5)).toBe('rgba(255, 255, 255, 0.5)');
   });
+
+  test('uppercase hex digits are parsed correctly', () => {
+    expect(hexToRgba('#FF0000', 1)).toBe('rgba(255, 0, 0, 1)');
+  });
+
+  test('alpha value 1.0 formats without trailing zero', () => {
+    expect(hexToRgba('#ef5350', 1.0)).toBe('rgba(239, 83, 80, 1)');
+  });
 });

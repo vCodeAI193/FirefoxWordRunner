@@ -125,6 +125,14 @@ describe('getOrpOffset', () => {
     // letters = '' → len 0 ≤ 1 → 0
     expect(getOrpOffset('...')).toBe(0);
   });
+
+  test('3-letter word returns 1',  () => expect(getOrpOffset('the')).toBe(1));
+  test('4-letter word returns 1',  () => expect(getOrpOffset('word')).toBe(1));
+  test('7-letter word returns 2',  () => expect(getOrpOffset('quickly')).toBe(2));
+  test('8-letter word returns 2',  () => expect(getOrpOffset('wonders')).toBe(2));
+  test('11-letter word returns 3', () => expect(getOrpOffset('immediately')).toBe(3));
+  test('12-letter word returns 3', () => expect(getOrpOffset('implications')).toBe(3));
+  test('15-letter word returns 4', () => expect(getOrpOffset('extraordinarily')).toBe(4));
 });
 
 // ---------------------------------------------------------------------------
@@ -172,6 +180,20 @@ describe('splitAtOrp', () => {
 
   test('empty string returns all empty parts', () => {
     expect(splitAtOrp('')).toEqual({ before: '', focus: '', after: '' });
+  });
+
+  test('multiple leading punctuation is included in before', () => {
+    const result = splitAtOrp('..."hello"');
+    expect(result.before + result.focus + result.after).toBe('..."hello"');
+    expect(result.focus).toBe('e');
+  });
+
+  test('pure-punctuation word: all chars end up in before, focus is empty', () => {
+    // start advances past all 3 non-word chars → orp=3; before='...', focus='', after=''
+    const result = splitAtOrp('...');
+    expect(result.before + result.focus + result.after).toBe('...');
+    expect(result.focus).toBe('');
+    expect(result.before).toBe('...');
   });
 });
 
@@ -261,6 +283,27 @@ describe('getWordDuration', () => {
     // 'café'.replace(/[^a-zA-Z]/g,'') = 'caf' → 3 letters → m=1.0
     expect(getWordDuration('café', 200)).toBe(Math.round(200 * 1.0));
   });
+
+  test('6-letter word uses 1.0× multiplier (upper boundary of 1.0 tier)', () => {
+    // 'runner' → len=6, not ≥7, not ≤2 → m=1.0
+    expect(getWordDuration('runner', 200)).toBe(200);
+  });
+
+  test('9-letter word uses 1.2× multiplier (upper boundary of 1.2 tier)', () => {
+    // 'beautiful' → len=9, not ≥10 → m=1.2
+    expect(getWordDuration('beautiful', 200)).toBe(Math.round(200 * 1.2));
+  });
+
+  test('single punctuation . treated as len=0 with sentence-end boost', () => {
+    // letters='' → len=0 ≤ 2 → m=0.8; sentenceEnd=true → +0.6 = 1.4
+    expect(getWordDuration('.', 200)).toBe(Math.round(200 * 1.4));
+  });
+
+  test('fractional baseMs is rounded correctly', () => {
+    const result = getWordDuration('hi', 333); // len=2 → m=0.8
+    expect(result).toBe(Math.round(333 * 0.8));
+    expect(Number.isInteger(result)).toBe(true);
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -302,5 +345,13 @@ describe('estimateReadingMs', () => {
 
   test('returns 0 for negative word count', () => {
     expect(estimateReadingMs(-5, 300)).toBe(0);
+  });
+
+  test('returns 0 for negative wpm', () => {
+    expect(estimateReadingMs(100, -1)).toBe(0);
+  });
+
+  test('minimal valid input: 1 word at 1 wpm', () => {
+    expect(estimateReadingMs(1, 1)).toBeCloseTo(67200, 0);
   });
 });
