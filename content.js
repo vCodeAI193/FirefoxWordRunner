@@ -22,6 +22,7 @@ const WR = {
   wpm: 300,
   wordsPerChunk: 1,
   displayMode: 'overlay',   // 'overlay' | 'highlight'
+  theme: 'auto',            // cached from settings so scheme-change handler needs no storage read
   intervalMs: 200,
   timeoutId: null,
   lastTickTime: null,
@@ -675,16 +676,15 @@ const FONT_FAMILY_MAP = {
   system: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
 };
 
-function applyTheme(theme, orpColor, fontSize, fontFamily) {
+function resolveTheme(theme) {
+  if (theme !== 'auto') return theme;
+  return window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
+}
+
+function applyColorScheme(resolvedTheme) {
   const h = WR.shadowHost;
   if (!h) return;
-  h.style.setProperty('--wr-font-size', `${fontSize}px`);
-  h.style.setProperty('--wr-orp', orpColor);
-  h.style.setProperty('--wr-font-family', FONT_FAMILY_MAP[fontFamily] || FONT_FAMILY_MAP.system);
-  const effectiveTheme = theme === 'auto'
-    ? (window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark')
-    : theme;
-  if (effectiveTheme === 'light') {
+  if (resolvedTheme === 'light') {
     h.style.setProperty('--wr-bg',          'rgba(255, 255, 248, 0.97)');
     h.style.setProperty('--wr-text',         '#1a1a2e');
     h.style.setProperty('--wr-guide-color',  'rgba(0, 100, 160, 0.35)');
@@ -699,9 +699,18 @@ function applyTheme(theme, orpColor, fontSize, fontFamily) {
   }
 }
 
+function applyTheme(theme, orpColor, fontSize, fontFamily) {
+  const h = WR.shadowHost;
+  if (!h) return;
+  h.style.setProperty('--wr-font-size', `${fontSize}px`);
+  h.style.setProperty('--wr-orp', orpColor);
+  h.style.setProperty('--wr-font-family', FONT_FAMILY_MAP[fontFamily] || FONT_FAMILY_MAP.system);
+  applyColorScheme(resolveTheme(theme));
+}
+
 function reapplyThemeOnSchemeChange() {
-  if (!WR.active || WR.displayMode !== 'overlay') return;
-  loadSessionSettings().then(cfg => applyTheme(cfg.theme, cfg.orpColor, cfg.fontSize, cfg.fontFamily));
+  if (!WR.active || WR.displayMode !== 'overlay' || !WR.shadowHost) return;
+  applyColorScheme(resolveTheme(WR.theme));
 }
 
 function showOverlay() { WR.shadowHost.classList.add('active'); }
@@ -977,6 +986,7 @@ async function startSession(wpm, source, customText) {
   WR.wpm                   = wpm;
   WR.wordsPerChunk         = cfg.wordsPerChunk;
   WR.displayMode           = cfg.displayMode;
+  WR.theme                 = cfg.theme;
   WR.intervalMs            = Math.round(60000 / wpm);
   WR.active                = true;
   WR.paused                = false;
