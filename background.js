@@ -1,5 +1,13 @@
 const DEFAULT_WPM = 300;
 
+// Mirror of lib/validators.js validateUrl — background scripts cannot load lib/ files.
+function isValidHttpUrl(url) {
+  try {
+    const u = new URL(url);
+    return u.protocol === 'http:' || u.protocol === 'https:';
+  } catch { return false; }
+}
+
 // Tab IDs pending an auto-start after navigation completes.
 // Maps tabId → { wpm, source }
 const pendingAutoRead = new Map();
@@ -52,6 +60,7 @@ browser.runtime.onMessage.addListener((msg, sender, sendResponse) => {
 browser.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   if (msg.action !== 'openAndRead') return;
   const { url, wpm, source = 'page' } = msg;
+  if (!isValidHttpUrl(url)) { sendResponse({ ok: false }); return; }
   browser.tabs.create({ url }).then(tab => {
     pendingAutoRead.set(tab.id, { wpm, source });
     sendResponse({ ok: true });

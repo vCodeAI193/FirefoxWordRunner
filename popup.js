@@ -176,6 +176,7 @@ async function renderReadingList() {
     openBtn.type = 'button';
     openBtn.textContent = t('openLabel');
     openBtn.addEventListener('click', () => {
+      if (!validateUrl(item.url)) return;
       browser.tabs.create({ url: item.url });
     });
     row.appendChild(openBtn);
@@ -186,6 +187,7 @@ async function renderReadingList() {
     openReadBtn.textContent = t('openAndReadLabel');
     openReadBtn.title = t('openAndReadTitle');
     openReadBtn.addEventListener('click', async () => {
+      if (!validateUrl(item.url)) return;
       const { wpm = 300 } = await browser.storage.local.get('wpm');
       browser.runtime.sendMessage({ action: 'openAndRead', url: item.url, wpm });
       window.close();
