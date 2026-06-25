@@ -1,4 +1,4 @@
-const { SETTINGS_VALIDATORS: V } = require('../lib/validators');
+const { SETTINGS_VALIDATORS: V, validateUrl } = require('../lib/validators');
 
 describe('SETTINGS_VALIDATORS', () => {
   describe('wpm', () => {
@@ -78,4 +78,17 @@ describe('SETTINGS_VALIDATORS', () => {
     test('rejects null',   () => expect(V.skipShortWords(null)).toBe(false));
     test('rejects 0',      () => expect(V.skipShortWords(0)).toBe(false));
   });
+});
+
+describe('validateUrl', () => {
+  test('accepts https URL',                () => expect(validateUrl('https://example.com')).toBe(true));
+  test('accepts http URL with path',       () => expect(validateUrl('http://localhost:3000/path?q=1')).toBe(true));
+  test('rejects javascript: URL',          () => expect(validateUrl('javascript:alert(1)')).toBe(false));
+  test('rejects data: URL',                () => expect(validateUrl('data:text/html,<h1>x</h1>')).toBe(false));
+  test('rejects file: URL',                () => expect(validateUrl('file:///etc/passwd')).toBe(false));
+  test('rejects ftp: URL',                 () => expect(validateUrl('ftp://example.com')).toBe(false));
+  test('rejects empty string',             () => expect(validateUrl('')).toBe(false));
+  test('rejects null',                     () => expect(validateUrl(null)).toBe(false));
+  test('rejects non-URL string',           () => expect(validateUrl('not-a-url')).toBe(false));
+  test('rejects protocol-relative URL',   () => expect(validateUrl('//example.com')).toBe(false));
 });
