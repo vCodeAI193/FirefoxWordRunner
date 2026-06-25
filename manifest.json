@@ -40,7 +40,7 @@
 
   "content_scripts": [
     {
-      "matches": ["<all_urls>"],
+      "matches": ["http://*/*", "https://*/*"],
       "js": ["lib/wordprocessor.js", "lib/utils.js", "content.js"],
       "css": ["content.css"],
       "run_at": "document_idle"
