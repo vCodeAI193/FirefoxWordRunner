@@ -974,7 +974,14 @@ async function startSession(wpm, source, customText) {
   WR.previousFocus   = document.activeElement;
 
   const cfg = await loadSessionSettings();
-  const { words, positions } = buildSessionWords(cfg.displayMode, source, customText, cfg.skipShort);
+
+  // Highlight mode needs DOM word positions — only available for 'page' source.
+  // For selection/custom sources fall back to overlay silently.
+  const displayMode = (cfg.displayMode === 'highlight' && source !== 'page')
+    ? 'overlay'
+    : cfg.displayMode;
+
+  const { words, positions } = buildSessionWords(displayMode, source, customText, cfg.skipShort);
 
   if (words.length === 0) {
     showPageToast(t('noWordsFound'));
@@ -985,7 +992,7 @@ async function startSession(wpm, source, customText) {
   WR.wordPositions         = positions;
   WR.wpm                   = wpm;
   WR.wordsPerChunk         = cfg.wordsPerChunk;
-  WR.displayMode           = cfg.displayMode;
+  WR.displayMode           = displayMode;
   WR.theme                 = cfg.theme;
   WR.intervalMs            = Math.round(60000 / wpm);
   WR.active                = true;
@@ -999,7 +1006,7 @@ async function startSession(wpm, source, customText) {
     showPageToast(tParam('toastResuming', { current: WR.wordIndex, total: words.length }));
   }
 
-  if (cfg.displayMode === 'highlight') {
+  if (displayMode === 'highlight') {
     buildHighlightUI();
     if (WR.highlightBox) {
       WR.highlightBox.style.background  = hexToRgba(cfg.orpColor, 0.28);
@@ -1028,7 +1035,7 @@ async function startSession(wpm, source, customText) {
   attachKeyboard();
 
   const firstChunk = words.slice(WR.wordIndex, WR.wordIndex + cfg.wordsPerChunk);
-  if (cfg.displayMode === 'highlight') highlightWordAt(WR.wordIndex);
+  if (displayMode === 'highlight') highlightWordAt(WR.wordIndex);
   else renderChunkInOverlay(firstChunk);
   WR.wordIndex += firstChunk.length;
   updateProgress();
