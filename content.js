@@ -44,6 +44,8 @@ const WR = {
   pauseOpts: { sentencePause: 0.6, commaPause: 0.3, paragraphPause: 2.5 },
   contentMode: 'smart',
   keymap: { ...DEFAULT_KEYMAP },
+  dimPage: false,
+  bionicReading: false,
 
   // Overlay (Shadow DOM)
   shadowHost: null,
@@ -70,6 +72,30 @@ let _posCacheKey = null;
 function debounce(fn, ms) {
   let timer;
   return (...args) => { clearTimeout(timer); timer = setTimeout(() => fn(...args), ms); };
+}
+
+// ---------------------------------------------------------------------------
+// Settings storage: try sync first, fall back to local
+// ---------------------------------------------------------------------------
+
+async function getSettings(keys) {
+  try {
+    const syncData = await browser.storage.sync.get(keys);
+    const missing = keys.filter(k => syncData[k] === undefined);
+    if (missing.length === 0) return syncData;
+    const localData = await browser.storage.local.get(missing);
+    return { ...localData, ...syncData };
+  } catch {
+    return browser.storage.local.get(keys);
+  }
+}
+
+function bionicBoldLength(word) {
+  const alpha = word.replace(/\W/g, '').length || 1;
+  if (alpha <= 1) return 1;
+  if (alpha <= 4) return Math.ceil(alpha / 2);
+  if (alpha <= 7) return 3;
+  return Math.ceil(alpha * 0.45);
 }
 
 // ---------------------------------------------------------------------------
@@ -574,6 +600,11 @@ const OVERLAY_CSS = `
 
 .wr-hint { font-size: 11px; color: rgba(255,255,255,0.28); }
 
+.wr-word-display.bionic .wr-word-focus {
+  color: var(--wr-text, #e8eaf6);
+  font-weight: 800;
+}
+
 .wr-done-msg {
   font-size: 18px;
   color: #4fc3f7;
@@ -830,12 +861,49 @@ function buildHighlightUI() {
   });
   controls.querySelector('.wr-mini-stop').addEventListener('click', stopSession);
 
+  // Drag support for the mini-controls bar
+  let dragState = null;
+  function onDragMove(e) {
+    if (!dragState) return;
+    controls.style.left = `${dragState.origLeft + e.clientX - dragState.startX}px`;
+    controls.style.top  = `${Math.max(0, dragState.origTop + e.clientY - dragState.startY)}px`;
+  }
+  function onDragUp() {
+    if (!dragState) return;
+    dragState = null;
+    controls.style.cursor = '';
+    document.removeEventListener('mousemove', onDragMove);
+    document.removeEventListener('mouseup', onDragUp);
+    browser.storage.local.set({
+      miniControlsPosition: { top: controls.style.top, left: controls.style.left },
+    }).catch(() => {});
+  }
+  controls.addEventListener('mousedown', e => {
+    if (e.button !== 0 || e.target.closest('.wr-mini-btn')) return;
+    const bcr = controls.getBoundingClientRect();
+    controls.style.transform = 'none';
+    controls.style.right = 'auto';
+    controls.style.left  = `${bcr.left}px`;
+    controls.style.top   = `${bcr.top}px`;
+    dragState = { startX: e.clientX, startY: e.clientY, origLeft: bcr.left, origTop: bcr.top };
+    controls.style.cursor = 'grabbing';
+    document.addEventListener('mousemove', onDragMove);
+    document.addEventListener('mouseup', onDragUp);
+    e.preventDefault();
+  });
+  WR._cleanupDrag = () => {
+    document.removeEventListener('mousemove', onDragMove);
+    document.removeEventListener('mouseup', onDragUp);
+  };
+
   WR.highlightBox      = box;
   WR.highlightBox2     = box2;
   WR.highlightControls = controls;
 }
 
 function removeHighlightUI() {
+  WR._cleanupDrag?.();
+  WR._cleanupDrag = null;
   WR.highlightBox?.remove();
   WR.highlightBox2?.remove();
   WR.highlightControls?.remove();
@@ -874,8 +942,11 @@ function highlightWordAt(index) {
   if (!WR.highlightBox) return;
 
   const rect = positionHighlightBox(WR.highlightBox, pos);
-  if (rect && (rect.top < 120 || rect.bottom > window.innerHeight - 120)) {
-    pos.node.parentElement?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  if (rect) {
+    WR.highlightBox.style.boxShadow = WR.dimPage ? '0 0 0 9999px rgba(0,0,0,0.65)' : '';
+    if (rect.top < 120 || rect.bottom > window.innerHeight - 120) {
+      pos.node.parentElement?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
   }
 
   // Second word box (2-word mode)
@@ -904,6 +975,7 @@ function updateHighlightControls() {
 
 function renderChunkInOverlay(chunk) {
   if (!WR.shadowRoot || !chunk.length) return;
+  const el = WR.shadowRoot.querySelector('.wr-word-display');
 
   // Paragraph break — clear display and skip animation
   if (chunk[0] === PARA_MARKER) {
@@ -914,14 +986,23 @@ function renderChunkInOverlay(chunk) {
     return;
   }
 
-  const { before, focus, after } = splitAtOrp(chunk[0]);
-  WR.shadowRoot.querySelector('.wr-word-left').textContent  = before;
-  WR.shadowRoot.querySelector('.wr-word-focus').textContent = focus;
-  WR.shadowRoot.querySelector('.wr-word-right').textContent = after;
-  const second = chunk[1] && chunk[1] !== PARA_MARKER ? chunk[1] : '';
-  WR.shadowRoot.querySelector('.wr-word-two').textContent   = second ? ' ' + second : '';
+  if (WR.bionicReading) {
+    const boldLen = bionicBoldLength(chunk[0]);
+    WR.shadowRoot.querySelector('.wr-word-left').textContent  = '';
+    WR.shadowRoot.querySelector('.wr-word-focus').textContent = chunk[0].slice(0, boldLen);
+    WR.shadowRoot.querySelector('.wr-word-right').textContent = chunk[0].slice(boldLen);
+    el.classList.add('bionic');
+  } else {
+    const { before, focus, after } = splitAtOrp(chunk[0]);
+    WR.shadowRoot.querySelector('.wr-word-left').textContent  = before;
+    WR.shadowRoot.querySelector('.wr-word-focus').textContent = focus;
+    WR.shadowRoot.querySelector('.wr-word-right').textContent = after;
+    el.classList.remove('bionic');
+  }
 
-  const el = WR.shadowRoot.querySelector('.wr-word-display');
+  const second = chunk[1] && chunk[1] !== PARA_MARKER ? chunk[1] : '';
+  WR.shadowRoot.querySelector('.wr-word-two').textContent = second ? ' ' + second : '';
+
   el.classList.remove('animating');
   void el.offsetWidth; // force reflow to restart animation
   el.classList.add('animating');
@@ -1000,9 +1081,10 @@ function tick() {
 // ---------------------------------------------------------------------------
 
 async function loadSessionSettings() {
-  const s = await browser.storage.local.get([
+  const s = await getSettings([
     'wordsPerChunk', 'displayMode', 'fontSize', 'fontFamily', 'theme', 'orpColor', 'skipShortWords',
     'pauseAtSentence', 'sentencePause', 'commaPause', 'paragraphPause', 'contentMode', 'keymap',
+    'dimPage', 'bionicReading',
   ]);
   return {
     wordsPerChunk:   s.wordsPerChunk || 1,
@@ -1018,8 +1100,10 @@ async function loadSessionSettings() {
       commaPause:     typeof s.commaPause     === 'number' ? s.commaPause     : 0.3,
       paragraphPause: typeof s.paragraphPause === 'number' ? s.paragraphPause : 2.5,
     },
-    contentMode: s.contentMode || 'smart',
-    keymap: { ...DEFAULT_KEYMAP, ...(s.keymap || {}) },
+    contentMode:   s.contentMode || 'smart',
+    keymap:        { ...DEFAULT_KEYMAP, ...(s.keymap || {}) },
+    dimPage:       !!s.dimPage,
+    bionicReading: !!s.bionicReading,
   };
 }
 
@@ -1088,6 +1172,8 @@ async function startSession(wpm, source, customText) {
   WR.pauseOpts             = cfg.pauseOpts;
   WR.contentMode           = cfg.contentMode;
   WR.keymap                = cfg.keymap;
+  WR.dimPage               = cfg.dimPage;
+  WR.bionicReading         = cfg.bionicReading;
 
   WR.wordIndex = source === 'page' ? await restorePosition(words) : 0;
   if (WR.wordIndex > 0) {
@@ -1096,6 +1182,17 @@ async function startSession(wpm, source, customText) {
 
   if (displayMode === 'highlight') {
     buildHighlightUI();
+    // Restore previously saved position for the mini-controls bar
+    try {
+      const posData = await browser.storage.local.get('miniControlsPosition');
+      if (posData.miniControlsPosition && WR.highlightControls) {
+        const { top, left } = posData.miniControlsPosition;
+        WR.highlightControls.style.transform = 'none';
+        WR.highlightControls.style.right = 'auto';
+        WR.highlightControls.style.left  = left;
+        WR.highlightControls.style.top   = top;
+      }
+    } catch { /* no saved position */ }
     if (WR.highlightBox) {
       WR.highlightBox.style.background  = hexToRgba(cfg.orpColor, 0.28);
       WR.highlightBox.style.borderColor = hexToRgba(cfg.orpColor, 0.65);

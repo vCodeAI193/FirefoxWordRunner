@@ -1,5 +1,15 @@
 const DEFAULT_WPM = 300;
 
+// Read WPM from sync (cross-device) with local fallback
+async function getWpm() {
+  try {
+    const { wpm } = await browser.storage.sync.get('wpm');
+    if (wpm !== undefined) return wpm;
+  } catch { /* sync unavailable */ }
+  const { wpm = DEFAULT_WPM } = await browser.storage.local.get('wpm');
+  return wpm;
+}
+
 // Mirror of lib/validators.js validateUrl — background scripts cannot load lib/ files.
 function isValidHttpUrl(url) {
   try {
@@ -22,7 +32,7 @@ browser.runtime.onInstalled.addListener(() => {
 
 browser.contextMenus.onClicked.addListener(async (info, tab) => {
   if (info.menuItemId !== 'wr-read-selection') return;
-  const { wpm = DEFAULT_WPM } = await browser.storage.local.get('wpm');
+  const wpm = await getWpm();
   try {
     await browser.tabs.sendMessage(tab.id, { action: 'start', wpm, source: 'selection' });
   } catch {
@@ -36,7 +46,7 @@ browser.commands.onCommand.addListener(async (command) => {
   const tabs = await browser.tabs.query({ active: true, currentWindow: true });
   const tab = tabs[0];
   if (!tab) return;
-  const { wpm = DEFAULT_WPM } = await browser.storage.local.get('wpm');
+  const wpm = await getWpm();
   try {
     await browser.tabs.sendMessage(tab.id, { action: 'start', wpm, source: 'page' });
   } catch {

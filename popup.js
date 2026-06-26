@@ -40,6 +40,49 @@ const DEFAULT_KEYMAP = {
 };
 
 // ---------------------------------------------------------------------------
+// Settings storage: write to both sync and local; read from sync with fallback
+// ---------------------------------------------------------------------------
+
+const SETTINGS_KEYS = [
+  'wpm', 'wordsPerChunk', 'displayMode', 'fontSize', 'fontFamily',
+  'theme', 'orpColor', 'skipShortWords',
+  'pauseAtSentence', 'sentencePause', 'commaPause', 'paragraphPause',
+  'dailyGoal', 'contentMode', 'keymap',
+  'dimPage', 'bionicReading',
+];
+
+function saveSetting(obj) {
+  browser.storage.local.set(obj).catch(() => {});
+  browser.storage.sync.set(obj).catch(() => {});
+}
+
+async function loadSettings(extraKeys) {
+  const keys = extraKeys ? [...SETTINGS_KEYS, ...extraKeys] : SETTINGS_KEYS;
+  try {
+    const syncData = await browser.storage.sync.get(keys);
+    const missing = keys.filter(k => !(k in syncData));
+    if (missing.length === 0) return syncData;
+    const localData = await browser.storage.local.get(missing);
+    return { ...localData, ...syncData };
+  } catch {
+    return browser.storage.local.get(keys);
+  }
+}
+
+// One-time migration: copy existing local settings to sync storage.
+async function migrateToSync() {
+  try {
+    const check = await browser.storage.sync.get('_synced');
+    if (check._synced) return;
+    const localData = await browser.storage.local.get(SETTINGS_KEYS);
+    const toSync = Object.keys(localData).length > 0
+      ? { ...localData, _synced: true }
+      : { _synced: true };
+    await browser.storage.sync.set(toSync);
+  } catch { /* sync unavailable or quota exceeded */ }
+}
+
+// ---------------------------------------------------------------------------
 // Stats display
 // ---------------------------------------------------------------------------
 
@@ -369,7 +412,6 @@ async function renderTabBookmarks(tab) {
     btn.textContent = `${t('resumeFromWord')} ${bm.wordIndex}`;
     btn.addEventListener('click', async () => {
       try {
-        // Overwrite readPosition so startSession resumes from this bookmark
         const { readPositions = {} } = await browser.storage.local.get('readPositions');
         readPositions[pageKey] = { wordIndex: bm.wordIndex, ts: Date.now() };
         await browser.storage.local.set({ readPositions });
@@ -413,15 +455,8 @@ function exportStatsCsv(stats) {
 // Settings export / import
 // ---------------------------------------------------------------------------
 
-const SETTINGS_KEYS = [
-  'wpm', 'wordsPerChunk', 'displayMode', 'fontSize', 'fontFamily',
-  'theme', 'orpColor', 'skipShortWords',
-  'pauseAtSentence', 'sentencePause', 'commaPause', 'paragraphPause',
-  'dailyGoal', 'contentMode', 'keymap',
-];
-
 function exportSettings() {
-  browser.storage.local.get(SETTINGS_KEYS).then(saved => {
+  loadSettings().then(saved => {
     const blob = new Blob([JSON.stringify(saved, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -443,7 +478,7 @@ function importSettings(file) {
       const filtered = Object.fromEntries(
         Object.entries(parsed).filter(([k, v]) => allowed.has(k) && SETTINGS_VALIDATORS[k]?.(v))
       );
-      await browser.storage.local.set(filtered);
+      saveSetting(filtered);
       showStatus(t('importSuccess'));
       setTimeout(() => window.location.reload(), 800);
     } catch {
@@ -474,9 +509,10 @@ function restoreSettingsUI(data, els) {
   if (data.fontFamily)    els.fontFamilySelect.value = data.fontFamily;
   if (data.theme)         els.themeSelect.value      = data.theme;
   if (data.orpColor)      els.orpColor.value         = data.orpColor;
-  if (data.skipShortWords) els.skipShortWords.checked = true;
-
-  if (els.pauseAtSentence && data.pauseAtSentence) els.pauseAtSentence.checked = true;
+  if (data.skipShortWords)  els.skipShortWords.checked  = true;
+  if (data.pauseAtSentence) els.pauseAtSentence?.checked && (els.pauseAtSentence.checked = true);
+  if (data.dimPage)         els.dimPage      && (els.dimPage.checked      = true);
+  if (data.bionicReading)   els.bionicReading && (els.bionicReading.checked = true);
 
   if (els.sentencePauseSlider && data.sentencePause != null) {
     els.sentencePauseSlider.value = data.sentencePause;
@@ -501,7 +537,7 @@ function updatePresetActive(wpm) {
 }
 
 function attachPersistListeners(els) {
-  const saveWpm = debounce(val => browser.storage.local.set({ wpm: val }), 300);
+  const saveWpm = debounce(val => saveSetting({ wpm: val }), 300);
   els.slider.addEventListener('input', () => {
     const val = parseInt(els.slider.value, 10);
     els.wpmDisplay.textContent = val;
@@ -517,7 +553,7 @@ function attachPersistListeners(els) {
       els.wpmDisplay.textContent = val;
       els.slider.setAttribute('aria-valuenow', val);
       updatePresetActive(val);
-      browser.storage.local.set({ wpm: val });
+      saveSetting({ wpm: val });
     });
   });
 
@@ -525,27 +561,27 @@ function attachPersistListeners(els) {
     const val = parseInt(els.fontSlider.value, 10);
     els.fontDisplay.textContent = val;
     els.fontSlider.setAttribute('aria-valuenow', val);
-    browser.storage.local.set({ fontSize: val });
+    saveSetting({ fontSize: val });
   });
 
   els.fontFamilySelect.addEventListener('change', () =>
-    browser.storage.local.set({ fontFamily: els.fontFamilySelect.value }));
+    saveSetting({ fontFamily: els.fontFamilySelect.value }));
 
   els.themeSelect.addEventListener('change', () =>
-    browser.storage.local.set({ theme: els.themeSelect.value }));
+    saveSetting({ theme: els.themeSelect.value }));
 
   els.orpColor.addEventListener('input', () =>
-    browser.storage.local.set({ orpColor: els.orpColor.value }));
+    saveSetting({ orpColor: els.orpColor.value }));
 
   els.skipShortWords.addEventListener('change', () =>
-    browser.storage.local.set({ skipShortWords: els.skipShortWords.checked }));
+    saveSetting({ skipShortWords: els.skipShortWords.checked }));
 
   document.querySelectorAll('input[name="displayMode"]').forEach(r =>
-    r.addEventListener('change', () => browser.storage.local.set({ displayMode: r.value })));
+    r.addEventListener('change', () => saveSetting({ displayMode: r.value })));
 
   document.querySelectorAll('input[name="wordsPerChunk"]').forEach(r =>
     r.addEventListener('change', () =>
-      browser.storage.local.set({ wordsPerChunk: parseInt(r.value, 10) })));
+      saveSetting({ wordsPerChunk: parseInt(r.value, 10) })));
 
   document.querySelectorAll('input[name="source"]').forEach(r =>
     r.addEventListener('change', () =>
@@ -553,7 +589,15 @@ function attachPersistListeners(els) {
 
   if (els.pauseAtSentence) {
     els.pauseAtSentence.addEventListener('change', () =>
-      browser.storage.local.set({ pauseAtSentence: els.pauseAtSentence.checked }));
+      saveSetting({ pauseAtSentence: els.pauseAtSentence.checked }));
+  }
+  if (els.dimPage) {
+    els.dimPage.addEventListener('change', () =>
+      saveSetting({ dimPage: els.dimPage.checked }));
+  }
+  if (els.bionicReading) {
+    els.bionicReading.addEventListener('change', () =>
+      saveSetting({ bionicReading: els.bionicReading.checked }));
   }
 
   const makePauseSliderListener = (slider, displayId, storageKey) => {
@@ -562,7 +606,7 @@ function attachPersistListeners(els) {
       const val = parseFloat(slider.value);
       const display = document.getElementById(displayId);
       if (display) display.textContent = val.toFixed(1);
-      browser.storage.local.set({ [storageKey]: val });
+      saveSetting({ [storageKey]: val });
     });
   };
   makePauseSliderListener(els.sentencePauseSlider,  'sentence-pause-display',  'sentencePause');
@@ -571,11 +615,11 @@ function attachPersistListeners(els) {
 
   if (els.contentModeSelect) {
     els.contentModeSelect.addEventListener('change', () =>
-      browser.storage.local.set({ contentMode: els.contentModeSelect.value }));
+      saveSetting({ contentMode: els.contentModeSelect.value }));
   }
 
   if (els.dailyGoalInput) {
-    const saveDailyGoal = debounce(val => browser.storage.local.set({ dailyGoal: val }), 500);
+    const saveDailyGoal = debounce(val => saveSetting({ dailyGoal: val }), 500);
     els.dailyGoalInput.addEventListener('input', () => {
       const val = parseInt(els.dailyGoalInput.value, 10) || 0;
       saveDailyGoal(val);
@@ -597,7 +641,6 @@ function setupKeymapUI(savedKeymap) {
 
   document.querySelectorAll('.keymap-btn').forEach(btn => {
     btn.addEventListener('click', () => {
-      // Cancel any other in-progress recording
       document.querySelectorAll('.keymap-btn.recording').forEach(b => {
         b.classList.remove('recording');
         b.textContent = km[b.dataset.action] || DEFAULT_KEYMAP[b.dataset.action] || '';
@@ -610,7 +653,6 @@ function setupKeymapUI(savedKeymap) {
         e.preventDefault();
         e.stopPropagation();
         const code = e.code;
-        // Ignore bare modifier keys
         if (['ShiftLeft','ShiftRight','ControlLeft','ControlRight',
              'AltLeft','AltRight','MetaLeft','MetaRight'].includes(code)) return;
 
@@ -618,12 +660,11 @@ function setupKeymapUI(savedKeymap) {
         km[btn.dataset.action] = code;
         btn.textContent = code;
         document.removeEventListener('keydown', onKey, true);
-        await browser.storage.local.set({ keymap: { ...km } });
+        saveSetting({ keymap: { ...km } });
       };
 
       document.addEventListener('keydown', onKey, true);
 
-      // Cancel when clicking elsewhere
       const onClickOut = e => {
         if (!btn.contains(e.target)) {
           btn.classList.remove('recording');
@@ -638,14 +679,14 @@ function setupKeymapUI(savedKeymap) {
 
   const resetBtn = document.getElementById('keymap-reset-btn');
   if (resetBtn) {
-    resetBtn.addEventListener('click', async () => {
+    resetBtn.addEventListener('click', () => {
       Object.assign(km, DEFAULT_KEYMAP);
       document.querySelectorAll('.keymap-btn').forEach(btn => {
         const action = btn.dataset.action;
         btn.classList.remove('recording');
         if (action) btn.textContent = DEFAULT_KEYMAP[action] || '';
       });
-      await browser.storage.local.set({ keymap: { ...DEFAULT_KEYMAP } });
+      saveSetting({ keymap: { ...DEFAULT_KEYMAP } });
     });
   }
 }
@@ -657,6 +698,9 @@ function setupKeymapUI(savedKeymap) {
 document.addEventListener('DOMContentLoaded', async () => {
   document.documentElement.lang = browser.i18n.getUILanguage().split('-')[0];
   applyI18n();
+
+  // Migrate local settings to sync storage (once, silently)
+  migrateToSync();
 
   const els = {
     slider:               document.getElementById('wpm-slider'),
@@ -673,6 +717,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     skipShortWords:       document.getElementById('skip-short-words'),
     addToListBtn:         document.getElementById('add-to-list-btn'),
     pauseAtSentence:      document.getElementById('pause-at-sentence'),
+    dimPage:              document.getElementById('dim-page'),
+    bionicReading:        document.getElementById('bionic-reading'),
     sentencePauseSlider:  document.getElementById('sentence-pause-slider'),
     commaPauseSlider:     document.getElementById('comma-pause-slider'),
     paragraphPauseSlider: document.getElementById('paragraph-pause-slider'),
@@ -680,16 +726,16 @@ document.addEventListener('DOMContentLoaded', async () => {
     dailyGoalInput:       document.getElementById('daily-goal-input'),
   };
 
-  const data = await browser.storage.local.get([
-    'wpm', 'wordsPerChunk', 'displayMode', 'fontSize', 'fontFamily',
-    'theme', 'orpColor', 'skipShortWords', 'stats',
-    'pauseAtSentence', 'sentencePause', 'commaPause', 'paragraphPause',
-    'dailyGoal', 'contentMode', 'keymap',
+  // Load settings from sync (with local fallback) + stats from local
+  const [data, localData] = await Promise.all([
+    loadSettings(),
+    browser.storage.local.get('stats'),
   ]);
+  const stats = localData.stats;
 
   restoreSettingsUI(data, els);
   updatePresetActive(data.wpm || 300);
-  displayStats(data.stats, data.dailyGoal || 0);
+  displayStats(stats, data.dailyGoal || 0);
   setupKeymapUI(data.keymap || {});
 
   document.getElementById('clear-stats-btn').addEventListener('click', async () => {
@@ -700,7 +746,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   const exportStatsBtn = document.getElementById('export-stats-btn');
   if (exportStatsBtn) {
-    exportStatsBtn.addEventListener('click', () => exportStatsCsv(data.stats));
+    exportStatsBtn.addEventListener('click', () => exportStatsCsv(stats));
   }
 
   attachPersistListeners(els);

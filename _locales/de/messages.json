@@ -1,107 +1,323 @@
 {
-  "extName":                { "message": "Word Runner" },
-  "extDescription":         { "message": "RSVP Schnelllesen: ein Wort nach dem anderen, schneller lesen." },
-  "textSourceLabel":        { "message": "Textquelle" },
-  "selectedText":           { "message": "Ausgewählter Text" },
-  "fullPage":               { "message": "Ganze Seite" },
-  "customText":             { "message": "Eigener Text" },
-  "customTextPlaceholder":  { "message": "Text hier einfügen…" },
-  "readingSpeedLabel":      { "message": "Lesegeschwindigkeit" },
-  "slowLabel":              { "message": "Langsam" },
-  "fastLabel":              { "message": "Schnell" },
-  "startReading":           { "message": "Lesen starten" },
-  "pauseReading":           { "message": "Pause" },
-  "resumeReading":          { "message": "Fortsetzen" },
-  "advancedLabel":          { "message": "Erweitert" },
-  "displayModeLabel":       { "message": "Anzeigemodus" },
-  "overlayMode":            { "message": "Overlay" },
-  "highlightMode":          { "message": "Seite" },
-  "wordsPerChunkLabel":     { "message": "Wörter pro Anzeige" },
-  "oneWord":                { "message": "1 Wort" },
-  "twoWords":               { "message": "2 Wörter" },
-  "fontSizeLabel":          { "message": "Schriftgröße" },
-  "fontFamilyLabel":        { "message": "Schriftart" },
-  "fontSystem":             { "message": "System" },
-  "fontSerif":              { "message": "Serif" },
-  "fontMono":               { "message": "Mono" },
-  "skipShortWordsLabel":    { "message": "Kurze Wörter überspringen (≤ 2 Buchstaben)" },
-  "themeLabel":             { "message": "Thema" },
-  "themeAuto":              { "message": "Auto" },
-  "themeDark":              { "message": "Dunkel" },
-  "themeLight":             { "message": "Hell" },
-  "orpColorLabel":          { "message": "ORP-Farbe" },
-  "statsLabel":             { "message": "Statistiken" },
-  "statsEmpty":             { "message": "Noch keine Statistiken" },
-  "wordsReadLabel":         { "message": "Wörter gelesen" },
-  "historyLabel":           { "message": "Letzte Sitzungen" },
-  "sessionsLabel":          { "message": "Sitzungen" },
-  "readingListLabel":       { "message": "Leseliste" },
-  "readingListEmpty":       { "message": "Leseliste ist leer" },
-  "addToListLabel":         { "message": "Seite zur Leseliste hinzufügen" },
-  "removeFromList":         { "message": "Entfernen" },
-  "errorPage":              { "message": "Auf dieser Seite nicht verfügbar." },
-  "hintText":               { "message": "Leertaste: Pause · Esc: Stop · ← → Springen" },
-  "doneMsg":                { "message": "Fertig! Esc zum Schließen." },
-  "overlayAriaLabel":       { "message": "Word Runner Lesemodus" },
-  "contextMenuLabel":       { "message": "Mit Word Runner lesen" },
-  "commandStartReading":    { "message": "Word Runner starten" },
-  "pauseAriaLabel":         { "message": "Pause (Leertaste)" },
-  "resumeAriaLabel":        { "message": "Fortsetzen (Leertaste)" },
-  "stopAriaLabel":          { "message": "Stop (Escape)" },
-  "miniStopLabel":          { "message": "Stop" },
-  "miniPauseLabel":         { "message": "Pause" },
-  "miniResumeLabel":        { "message": "Fortsetzen" },
-  "timeRemainingShort":     { "message": "< 1 min" },
-  "openLabel":              { "message": "Öffnen" },
-  "customTextEmpty":        { "message": "Bitte zuerst einen Text eingeben." },
-  "wordsLabel":             { "message": "Wörter" },
-  "toastPositionSaved":     { "message": "Position gespeichert" },
-  "toastResuming":          { "message": "Weiter ab Wort {current} von {total}" },
-  "exportSettings":         { "message": "Einstellungen exportieren" },
-  "importSettings":         { "message": "Einstellungen importieren" },
-  "importSuccess":          { "message": "Einstellungen importiert." },
-  "importError":            { "message": "Ungültige Einstellungsdatei." },
-  "jumpToWordTitle":        { "message": "Klicken um zu Wortposition zu springen" },
-  "noWordsFound":           { "message": "Kein lesbarer Text auf dieser Seite gefunden." },
-  "noSelectionFound":       { "message": "Kein Text auf der Seite ausgewählt." },
-  "restartReading":         { "message": "Erneut lesen" },
-  "clearStats":             { "message": "Statistik zurücksetzen" },
-  "statsCleared":           { "message": "Statistik zurückgesetzt." },
-  "openAndReadLabel":       { "message": "▶ Lesen" },
-  "openAndReadTitle":       { "message": "Seite öffnen und automatisch lesen" },
-  "presetSlow":             { "message": "Langsam" },
-  "presetNormal":           { "message": "Normal" },
-  "presetFast":             { "message": "Schnell" },
-  "presetExpert":           { "message": "Experte" },
-  "wordCountPreview":       { "message": "{count} Wörter · ~{min} min" },
-  "shortcutsLabel":         { "message": "Tastenkürzel" },
-  "shortcutStartStop":      { "message": "Alt+W — Starten / Stoppen" },
-  "shortcutPause":          { "message": "Leertaste — Pause / Fortsetzen" },
-  "shortcutEsc":            { "message": "Esc — Stoppen" },
-  "shortcutSkip":           { "message": "← → — Zurück / Vorwärts springen" },
-  "shortcutSpeed":          { "message": "+ / − — Schneller / Langsamer" },
-  "exportStatsCsv":         { "message": "CSV exportieren" },
-  "pauseAtSentenceLabel":   { "message": "Auto-Pause am Satzende" },
-  "sentencePauseLabel":     { "message": "Satzende-Pause" },
-  "commaPauseLabel":        { "message": "Komma-Pause" },
-  "paragraphPauseLabel":    { "message": "Absatz-Pause" },
-  "dailyGoalLabel":         { "message": "Tagesziel" },
-  "streakDaysLabel":        { "message": "Tage-Serie" },
-  "todayWordsLabel":        { "message": "Wörter heute" },
-  "contentModeLabel":       { "message": "Inhalts-Modus" },
-  "contentModeSmart":       { "message": "Smart" },
-  "contentModeArticle":     { "message": "Artikel" },
-  "contentModeMinimal":     { "message": "Minimal" },
-  "toastBookmarkSaved":     { "message": "Lesezeichen bei Wort {index} gespeichert" },
-  "bookmarksLabel":         { "message": "Lesezeichen" },
-  "resumeFromWord":         { "message": "Weiter ab Wort" },
-  "keymapLabel":            { "message": "Tastenbelegung" },
-  "keymapPause":            { "message": "Pause / Fortsetzen" },
-  "keymapStop":             { "message": "Stoppen" },
-  "keymapSkipFwd":          { "message": "Vorwärts springen" },
-  "keymapSkipBwd":          { "message": "Zurück springen" },
-  "keymapSpeedUp":          { "message": "Schneller" },
-  "keymapSpeedDn":          { "message": "Langsamer" },
-  "keymapReset":            { "message": "Auf Standard zurücksetzen" },
-  "keymapRecording":        { "message": "Taste drücken…" }
+  "extName": {
+    "message": "Word Runner"
+  },
+  "extDescription": {
+    "message": "RSVP Schnelllesen: ein Wort nach dem anderen, schneller lesen."
+  },
+  "textSourceLabel": {
+    "message": "Textquelle"
+  },
+  "selectedText": {
+    "message": "Ausgewählter Text"
+  },
+  "fullPage": {
+    "message": "Ganze Seite"
+  },
+  "customText": {
+    "message": "Eigener Text"
+  },
+  "customTextPlaceholder": {
+    "message": "Text hier einfügen…"
+  },
+  "readingSpeedLabel": {
+    "message": "Lesegeschwindigkeit"
+  },
+  "slowLabel": {
+    "message": "Langsam"
+  },
+  "fastLabel": {
+    "message": "Schnell"
+  },
+  "startReading": {
+    "message": "Lesen starten"
+  },
+  "pauseReading": {
+    "message": "Pause"
+  },
+  "resumeReading": {
+    "message": "Fortsetzen"
+  },
+  "advancedLabel": {
+    "message": "Erweitert"
+  },
+  "displayModeLabel": {
+    "message": "Anzeigemodus"
+  },
+  "overlayMode": {
+    "message": "Overlay"
+  },
+  "highlightMode": {
+    "message": "Seite"
+  },
+  "wordsPerChunkLabel": {
+    "message": "Wörter pro Anzeige"
+  },
+  "oneWord": {
+    "message": "1 Wort"
+  },
+  "twoWords": {
+    "message": "2 Wörter"
+  },
+  "fontSizeLabel": {
+    "message": "Schriftgröße"
+  },
+  "fontFamilyLabel": {
+    "message": "Schriftart"
+  },
+  "fontSystem": {
+    "message": "System"
+  },
+  "fontSerif": {
+    "message": "Serif"
+  },
+  "fontMono": {
+    "message": "Mono"
+  },
+  "skipShortWordsLabel": {
+    "message": "Kurze Wörter überspringen (≤ 2 Buchstaben)"
+  },
+  "themeLabel": {
+    "message": "Thema"
+  },
+  "themeAuto": {
+    "message": "Auto"
+  },
+  "themeDark": {
+    "message": "Dunkel"
+  },
+  "themeLight": {
+    "message": "Hell"
+  },
+  "orpColorLabel": {
+    "message": "ORP-Farbe"
+  },
+  "statsLabel": {
+    "message": "Statistiken"
+  },
+  "statsEmpty": {
+    "message": "Noch keine Statistiken"
+  },
+  "wordsReadLabel": {
+    "message": "Wörter gelesen"
+  },
+  "historyLabel": {
+    "message": "Letzte Sitzungen"
+  },
+  "sessionsLabel": {
+    "message": "Sitzungen"
+  },
+  "readingListLabel": {
+    "message": "Leseliste"
+  },
+  "readingListEmpty": {
+    "message": "Leseliste ist leer"
+  },
+  "addToListLabel": {
+    "message": "Seite zur Leseliste hinzufügen"
+  },
+  "removeFromList": {
+    "message": "Entfernen"
+  },
+  "errorPage": {
+    "message": "Auf dieser Seite nicht verfügbar."
+  },
+  "hintText": {
+    "message": "Leertaste: Pause · Esc: Stop · ← → Springen"
+  },
+  "doneMsg": {
+    "message": "Fertig! Esc zum Schließen."
+  },
+  "overlayAriaLabel": {
+    "message": "Word Runner Lesemodus"
+  },
+  "contextMenuLabel": {
+    "message": "Mit Word Runner lesen"
+  },
+  "commandStartReading": {
+    "message": "Word Runner starten"
+  },
+  "pauseAriaLabel": {
+    "message": "Pause (Leertaste)"
+  },
+  "resumeAriaLabel": {
+    "message": "Fortsetzen (Leertaste)"
+  },
+  "stopAriaLabel": {
+    "message": "Stop (Escape)"
+  },
+  "miniStopLabel": {
+    "message": "Stop"
+  },
+  "miniPauseLabel": {
+    "message": "Pause"
+  },
+  "miniResumeLabel": {
+    "message": "Fortsetzen"
+  },
+  "timeRemainingShort": {
+    "message": "< 1 min"
+  },
+  "openLabel": {
+    "message": "Öffnen"
+  },
+  "customTextEmpty": {
+    "message": "Bitte zuerst einen Text eingeben."
+  },
+  "wordsLabel": {
+    "message": "Wörter"
+  },
+  "toastPositionSaved": {
+    "message": "Position gespeichert"
+  },
+  "toastResuming": {
+    "message": "Weiter ab Wort {current} von {total}"
+  },
+  "exportSettings": {
+    "message": "Einstellungen exportieren"
+  },
+  "importSettings": {
+    "message": "Einstellungen importieren"
+  },
+  "importSuccess": {
+    "message": "Einstellungen importiert."
+  },
+  "importError": {
+    "message": "Ungültige Einstellungsdatei."
+  },
+  "jumpToWordTitle": {
+    "message": "Klicken um zu Wortposition zu springen"
+  },
+  "noWordsFound": {
+    "message": "Kein lesbarer Text auf dieser Seite gefunden."
+  },
+  "noSelectionFound": {
+    "message": "Kein Text auf der Seite ausgewählt."
+  },
+  "restartReading": {
+    "message": "Erneut lesen"
+  },
+  "clearStats": {
+    "message": "Statistik zurücksetzen"
+  },
+  "statsCleared": {
+    "message": "Statistik zurückgesetzt."
+  },
+  "openAndReadLabel": {
+    "message": "▶ Lesen"
+  },
+  "openAndReadTitle": {
+    "message": "Seite öffnen und automatisch lesen"
+  },
+  "presetSlow": {
+    "message": "Langsam"
+  },
+  "presetNormal": {
+    "message": "Normal"
+  },
+  "presetFast": {
+    "message": "Schnell"
+  },
+  "presetExpert": {
+    "message": "Experte"
+  },
+  "wordCountPreview": {
+    "message": "{count} Wörter · ~{min} min"
+  },
+  "shortcutsLabel": {
+    "message": "Tastenkürzel"
+  },
+  "shortcutStartStop": {
+    "message": "Alt+W — Starten / Stoppen"
+  },
+  "shortcutPause": {
+    "message": "Leertaste — Pause / Fortsetzen"
+  },
+  "shortcutEsc": {
+    "message": "Esc — Stoppen"
+  },
+  "shortcutSkip": {
+    "message": "← → — Zurück / Vorwärts springen"
+  },
+  "shortcutSpeed": {
+    "message": "+ / − — Schneller / Langsamer"
+  },
+  "exportStatsCsv": {
+    "message": "CSV exportieren"
+  },
+  "pauseAtSentenceLabel": {
+    "message": "Auto-Pause am Satzende"
+  },
+  "sentencePauseLabel": {
+    "message": "Satzende-Pause"
+  },
+  "commaPauseLabel": {
+    "message": "Komma-Pause"
+  },
+  "paragraphPauseLabel": {
+    "message": "Absatz-Pause"
+  },
+  "dailyGoalLabel": {
+    "message": "Tagesziel"
+  },
+  "streakDaysLabel": {
+    "message": "Tage-Serie"
+  },
+  "todayWordsLabel": {
+    "message": "Wörter heute"
+  },
+  "contentModeLabel": {
+    "message": "Inhalts-Modus"
+  },
+  "contentModeSmart": {
+    "message": "Smart"
+  },
+  "contentModeArticle": {
+    "message": "Artikel"
+  },
+  "contentModeMinimal": {
+    "message": "Minimal"
+  },
+  "toastBookmarkSaved": {
+    "message": "Lesezeichen bei Wort {index} gespeichert"
+  },
+  "bookmarksLabel": {
+    "message": "Lesezeichen"
+  },
+  "resumeFromWord": {
+    "message": "Weiter ab Wort"
+  },
+  "keymapLabel": {
+    "message": "Tastenbelegung"
+  },
+  "keymapPause": {
+    "message": "Pause / Fortsetzen"
+  },
+  "keymapStop": {
+    "message": "Stoppen"
+  },
+  "keymapSkipFwd": {
+    "message": "Vorwärts springen"
+  },
+  "keymapSkipBwd": {
+    "message": "Zurück springen"
+  },
+  "keymapSpeedUp": {
+    "message": "Schneller"
+  },
+  "keymapSpeedDn": {
+    "message": "Langsamer"
+  },
+  "keymapReset": {
+    "message": "Auf Standard zurücksetzen"
+  },
+  "keymapRecording": {
+    "message": "Taste drücken…"
+  },
+  "dimPageLabel": {
+    "message": "Spotlight: Seite im Highlight-Modus abdunkeln"
+  },
+  "bionicReadingLabel": {
+    "message": "Bionic-Lesen (erste Buchstaben fett)"
+  }
 }

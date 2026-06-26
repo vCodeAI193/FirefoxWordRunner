@@ -32,6 +32,7 @@
 
 /* ── Highlight mode: mini control bar ── */
 #wr-mini-controls {
+  cursor: grab;
   position: fixed;
   top: 0;
   left: 50%;
