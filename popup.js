@@ -27,18 +27,92 @@ function applyI18n() {
 }
 
 // ---------------------------------------------------------------------------
+// Keymap default (must match content.js DEFAULT_KEYMAP)
+// ---------------------------------------------------------------------------
+
+const DEFAULT_KEYMAP = {
+  pause:   'Space',
+  stop:    'Escape',
+  skipFwd: 'ArrowRight',
+  skipBwd: 'ArrowLeft',
+  speedUp: 'Equal',
+  speedDn: 'Minus',
+};
+
+// ---------------------------------------------------------------------------
 // Stats display
 // ---------------------------------------------------------------------------
 
-function displayStats(stats) {
+function renderSparkline(history) {
+  if (!history || history.length < 2) return null;
+  const W = 268, H = 40, pad = 4;
+  const wpmVals = history.map(e => e.wpm || 0);
+  const min = Math.min(...wpmVals);
+  const max = Math.max(...wpmVals);
+  const range = max - min || 1;
+  const step = (W - pad * 2) / (wpmVals.length - 1);
+
+  const points = wpmVals.map((v, i) => {
+    const x = pad + i * step;
+    const y = H - pad - ((v - min) / range) * (H - pad * 2);
+    return `${x.toFixed(1)},${y.toFixed(1)}`;
+  }).join(' ');
+
+  const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  svg.setAttribute('width', W);
+  svg.setAttribute('height', H);
+  svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+  svg.setAttribute('aria-hidden', 'true');
+  svg.classList.add('stats-sparkline');
+
+  const polyline = document.createElementNS('http://www.w3.org/2000/svg', 'polyline');
+  polyline.setAttribute('points', points);
+  polyline.setAttribute('fill', 'none');
+  polyline.setAttribute('stroke', '#4fc3f7');
+  polyline.setAttribute('stroke-width', '1.5');
+  polyline.setAttribute('stroke-linejoin', 'round');
+  polyline.setAttribute('stroke-linecap', 'round');
+  svg.appendChild(polyline);
+
+  const lastX = pad + (wpmVals.length - 1) * step;
+  const lastY = H - pad - ((wpmVals[wpmVals.length - 1] - min) / range) * (H - pad * 2);
+  const dot = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+  dot.setAttribute('cx', lastX.toFixed(1));
+  dot.setAttribute('cy', lastY.toFixed(1));
+  dot.setAttribute('r', '3');
+  dot.setAttribute('fill', '#4fc3f7');
+  svg.appendChild(dot);
+
+  const wrap = document.createElement('div');
+  wrap.className = 'stats-sparkline-wrap';
+  wrap.appendChild(svg);
+
+  const labels = document.createElement('div');
+  labels.className = 'stats-sparkline-labels';
+  const minLabel = document.createElement('span');
+  minLabel.textContent = `${min} WPM`;
+  const maxLabel = document.createElement('span');
+  maxLabel.textContent = `${max} WPM`;
+  labels.appendChild(minLabel);
+  labels.appendChild(maxLabel);
+  wrap.appendChild(labels);
+
+  return wrap;
+}
+
+function displayStats(stats, dailyGoal) {
   const el = document.getElementById('stats-content');
   const clearBtn = document.getElementById('clear-stats-btn');
+  const exportBtn = document.getElementById('export-stats-btn');
   if (!stats || !stats.sessions) {
     el.textContent = t('statsEmpty');
     if (clearBtn) clearBtn.style.display = 'none';
+    if (exportBtn) exportBtn.style.display = 'none';
     return;
   }
   if (clearBtn) clearBtn.style.display = '';
+  if (exportBtn) exportBtn.style.display = '';
+
   const avgWpm = stats.totalMs > 0
     ? Math.round(stats.totalWords / (stats.totalMs / 60000))
     : 0;
@@ -53,7 +127,39 @@ function displayStats(stats) {
     `Ø ${avgWpm} WPM`;
   el.appendChild(summary);
 
+  // Streak + today's words
+  const streakDays = stats.streakDays || 0;
+  const todayWords = stats.todayWords || 0;
+  if (streakDays > 0 || todayWords > 0) {
+    const streak = document.createElement('div');
+    streak.className = 'stats-streak';
+    const goalNum = dailyGoal || 0;
+    const parts = [];
+    if (streakDays > 0) parts.push(`🔥 ${streakDays} ${t('streakDaysLabel')}`);
+    parts.push(goalNum > 0
+      ? `${todayWords.toLocaleString()} / ${goalNum.toLocaleString()} ${t('todayWordsLabel')}`
+      : `${todayWords.toLocaleString()} ${t('todayWordsLabel')}`);
+    streak.textContent = parts.join(' · ');
+    el.appendChild(streak);
+
+    if (goalNum > 0) {
+      const progressBar = document.createElement('div');
+      progressBar.className = 'stats-goal-bar';
+      const fill = document.createElement('div');
+      fill.className = 'stats-goal-fill';
+      fill.style.width = `${Math.min(100, Math.round((todayWords / goalNum) * 100))}%`;
+      progressBar.appendChild(fill);
+      el.appendChild(progressBar);
+    }
+  }
+
+  // WPM sparkline
   const history = stats.history;
+  if (history && history.length >= 2) {
+    const sparkline = renderSparkline(history.slice(-20));
+    if (sparkline) el.appendChild(sparkline);
+  }
+
   if (!history || history.length === 0) return;
 
   const heading = document.createElement('p');
@@ -217,7 +323,6 @@ async function addCurrentPageToList(tab) {
   const data = await browser.storage.local.get('readingList');
   const list = data.readingList || [];
 
-  // Don't add duplicates
   if (list.some(item => item.url === tab.url)) return;
 
   let wordCount = 0;
@@ -232,12 +337,87 @@ async function addCurrentPageToList(tab) {
 }
 
 // ---------------------------------------------------------------------------
+// Tab bookmarks
+// ---------------------------------------------------------------------------
+
+async function renderTabBookmarks(tab) {
+  const container = document.getElementById('tab-bookmarks');
+  if (!container || !tab) return;
+
+  const pageKey = tab.url;
+  const data = await browser.storage.local.get('readBookmarks');
+  const bookmarksMap = data.readBookmarks || {};
+  const bookmarks = bookmarksMap[pageKey] || [];
+
+  if (bookmarks.length === 0) {
+    container.classList.add('hidden');
+    return;
+  }
+
+  container.classList.remove('hidden');
+  container.innerHTML = '';
+
+  const heading = document.createElement('p');
+  heading.className = 'stats-history-heading';
+  heading.textContent = t('bookmarksLabel');
+  container.appendChild(heading);
+
+  bookmarks.forEach(bm => {
+    const btn = document.createElement('button');
+    btn.className = 'tab-bookmark-btn';
+    btn.type = 'button';
+    btn.textContent = `${t('resumeFromWord')} ${bm.wordIndex}`;
+    btn.addEventListener('click', async () => {
+      try {
+        // Overwrite readPosition so startSession resumes from this bookmark
+        const { readPositions = {} } = await browser.storage.local.get('readPositions');
+        readPositions[pageKey] = { wordIndex: bm.wordIndex, ts: Date.now() };
+        await browser.storage.local.set({ readPositions });
+        const { wpm = 300 } = await browser.storage.local.get('wpm');
+        await browser.tabs.sendMessage(tab.id, { action: 'start', source: 'page', wpm });
+        window.close();
+      } catch { /* tab unavailable */ }
+    });
+    container.appendChild(btn);
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Stats CSV export
+// ---------------------------------------------------------------------------
+
+function exportStatsCsv(stats) {
+  if (!stats || !stats.history || stats.history.length === 0) return;
+  const rows = [['date', 'title', 'url', 'wordsRead', 'wpm', 'durationMs']];
+  stats.history.forEach(e => {
+    rows.push([
+      new Date(e.date).toISOString(),
+      `"${(e.title || '').replace(/"/g, '""')}"`,
+      `"${(e.url || '').replace(/"/g, '""')}"`,
+      e.wordsRead,
+      e.wpm,
+      e.durationMs || '',
+    ]);
+  });
+  const csv = rows.map(r => r.join(',')).join('\n');
+  const blob = new Blob([csv], { type: 'text/csv' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'word-runner-stats.csv';
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+// ---------------------------------------------------------------------------
 // Settings export / import
 // ---------------------------------------------------------------------------
 
 const SETTINGS_KEYS = [
   'wpm', 'wordsPerChunk', 'displayMode', 'fontSize', 'fontFamily',
   'theme', 'orpColor', 'skipShortWords',
+  'pauseAtSentence', 'sentencePause', 'commaPause', 'paragraphPause',
+  'dailyGoal', 'contentMode', 'keymap',
 ];
 
 function exportSettings() {
@@ -291,10 +471,27 @@ function restoreSettingsUI(data, els) {
     els.fontSlider.setAttribute('aria-valuenow', data.fontSize);
     els.fontDisplay.textContent = data.fontSize;
   }
-  if (data.fontFamily)    els.fontFamilySelect.value  = data.fontFamily;
-  if (data.theme)         els.themeSelect.value       = data.theme;
-  if (data.orpColor)      els.orpColor.value          = data.orpColor;
+  if (data.fontFamily)    els.fontFamilySelect.value = data.fontFamily;
+  if (data.theme)         els.themeSelect.value      = data.theme;
+  if (data.orpColor)      els.orpColor.value         = data.orpColor;
   if (data.skipShortWords) els.skipShortWords.checked = true;
+
+  if (els.pauseAtSentence && data.pauseAtSentence) els.pauseAtSentence.checked = true;
+
+  if (els.sentencePauseSlider && data.sentencePause != null) {
+    els.sentencePauseSlider.value = data.sentencePause;
+    document.getElementById('sentence-pause-display').textContent = parseFloat(data.sentencePause).toFixed(1);
+  }
+  if (els.commaPauseSlider && data.commaPause != null) {
+    els.commaPauseSlider.value = data.commaPause;
+    document.getElementById('comma-pause-display').textContent = parseFloat(data.commaPause).toFixed(1);
+  }
+  if (els.paragraphPauseSlider && data.paragraphPause != null) {
+    els.paragraphPauseSlider.value = data.paragraphPause;
+    document.getElementById('paragraph-pause-display').textContent = parseFloat(data.paragraphPause).toFixed(1);
+  }
+  if (els.contentModeSelect && data.contentMode) els.contentModeSelect.value = data.contentMode;
+  if (els.dailyGoalInput && data.dailyGoal != null) els.dailyGoalInput.value = data.dailyGoal;
 }
 
 function updatePresetActive(wpm) {
@@ -353,6 +550,104 @@ function attachPersistListeners(els) {
   document.querySelectorAll('input[name="source"]').forEach(r =>
     r.addEventListener('change', () =>
       els.customSection.classList.toggle('hidden', !els.radioCustom.checked)));
+
+  if (els.pauseAtSentence) {
+    els.pauseAtSentence.addEventListener('change', () =>
+      browser.storage.local.set({ pauseAtSentence: els.pauseAtSentence.checked }));
+  }
+
+  const makePauseSliderListener = (slider, displayId, storageKey) => {
+    if (!slider) return;
+    slider.addEventListener('input', () => {
+      const val = parseFloat(slider.value);
+      const display = document.getElementById(displayId);
+      if (display) display.textContent = val.toFixed(1);
+      browser.storage.local.set({ [storageKey]: val });
+    });
+  };
+  makePauseSliderListener(els.sentencePauseSlider,  'sentence-pause-display',  'sentencePause');
+  makePauseSliderListener(els.commaPauseSlider,     'comma-pause-display',     'commaPause');
+  makePauseSliderListener(els.paragraphPauseSlider, 'paragraph-pause-display', 'paragraphPause');
+
+  if (els.contentModeSelect) {
+    els.contentModeSelect.addEventListener('change', () =>
+      browser.storage.local.set({ contentMode: els.contentModeSelect.value }));
+  }
+
+  if (els.dailyGoalInput) {
+    const saveDailyGoal = debounce(val => browser.storage.local.set({ dailyGoal: val }), 500);
+    els.dailyGoalInput.addEventListener('input', () => {
+      const val = parseInt(els.dailyGoalInput.value, 10) || 0;
+      saveDailyGoal(val);
+    });
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Keymap UI
+// ---------------------------------------------------------------------------
+
+function setupKeymapUI(savedKeymap) {
+  const km = { ...DEFAULT_KEYMAP, ...savedKeymap };
+
+  document.querySelectorAll('.keymap-btn').forEach(btn => {
+    const action = btn.dataset.action;
+    if (action && km[action]) btn.textContent = km[action];
+  });
+
+  document.querySelectorAll('.keymap-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      // Cancel any other in-progress recording
+      document.querySelectorAll('.keymap-btn.recording').forEach(b => {
+        b.classList.remove('recording');
+        b.textContent = km[b.dataset.action] || DEFAULT_KEYMAP[b.dataset.action] || '';
+      });
+
+      btn.classList.add('recording');
+      btn.textContent = t('keymapRecording');
+
+      const onKey = async e => {
+        e.preventDefault();
+        e.stopPropagation();
+        const code = e.code;
+        // Ignore bare modifier keys
+        if (['ShiftLeft','ShiftRight','ControlLeft','ControlRight',
+             'AltLeft','AltRight','MetaLeft','MetaRight'].includes(code)) return;
+
+        btn.classList.remove('recording');
+        km[btn.dataset.action] = code;
+        btn.textContent = code;
+        document.removeEventListener('keydown', onKey, true);
+        await browser.storage.local.set({ keymap: { ...km } });
+      };
+
+      document.addEventListener('keydown', onKey, true);
+
+      // Cancel when clicking elsewhere
+      const onClickOut = e => {
+        if (!btn.contains(e.target)) {
+          btn.classList.remove('recording');
+          btn.textContent = km[btn.dataset.action] || DEFAULT_KEYMAP[btn.dataset.action] || '';
+          document.removeEventListener('keydown', onKey, true);
+          document.removeEventListener('click', onClickOut, true);
+        }
+      };
+      setTimeout(() => document.addEventListener('click', onClickOut, true), 0);
+    });
+  });
+
+  const resetBtn = document.getElementById('keymap-reset-btn');
+  if (resetBtn) {
+    resetBtn.addEventListener('click', async () => {
+      Object.assign(km, DEFAULT_KEYMAP);
+      document.querySelectorAll('.keymap-btn').forEach(btn => {
+        const action = btn.dataset.action;
+        btn.classList.remove('recording');
+        if (action) btn.textContent = DEFAULT_KEYMAP[action] || '';
+      });
+      await browser.storage.local.set({ keymap: { ...DEFAULT_KEYMAP } });
+    });
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -364,35 +659,49 @@ document.addEventListener('DOMContentLoaded', async () => {
   applyI18n();
 
   const els = {
-    slider:          document.getElementById('wpm-slider'),
-    wpmDisplay:      document.getElementById('wpm-display'),
-    startBtn:        document.getElementById('start-btn'),
-    radioCustom:     document.getElementById('radio-custom'),
-    customSection:   document.getElementById('custom-text-section'),
-    customText:      document.getElementById('custom-text'),
-    fontSlider:      document.getElementById('font-size-slider'),
-    fontDisplay:     document.getElementById('font-size-display'),
-    fontFamilySelect: document.getElementById('font-family-select'),
-    themeSelect:     document.getElementById('theme-select'),
-    orpColor:        document.getElementById('orp-color'),
-    skipShortWords:  document.getElementById('skip-short-words'),
-    addToListBtn:    document.getElementById('add-to-list-btn'),
+    slider:               document.getElementById('wpm-slider'),
+    wpmDisplay:           document.getElementById('wpm-display'),
+    startBtn:             document.getElementById('start-btn'),
+    radioCustom:          document.getElementById('radio-custom'),
+    customSection:        document.getElementById('custom-text-section'),
+    customText:           document.getElementById('custom-text'),
+    fontSlider:           document.getElementById('font-size-slider'),
+    fontDisplay:          document.getElementById('font-size-display'),
+    fontFamilySelect:     document.getElementById('font-family-select'),
+    themeSelect:          document.getElementById('theme-select'),
+    orpColor:             document.getElementById('orp-color'),
+    skipShortWords:       document.getElementById('skip-short-words'),
+    addToListBtn:         document.getElementById('add-to-list-btn'),
+    pauseAtSentence:      document.getElementById('pause-at-sentence'),
+    sentencePauseSlider:  document.getElementById('sentence-pause-slider'),
+    commaPauseSlider:     document.getElementById('comma-pause-slider'),
+    paragraphPauseSlider: document.getElementById('paragraph-pause-slider'),
+    contentModeSelect:    document.getElementById('content-mode-select'),
+    dailyGoalInput:       document.getElementById('daily-goal-input'),
   };
 
   const data = await browser.storage.local.get([
     'wpm', 'wordsPerChunk', 'displayMode', 'fontSize', 'fontFamily',
     'theme', 'orpColor', 'skipShortWords', 'stats',
+    'pauseAtSentence', 'sentencePause', 'commaPause', 'paragraphPause',
+    'dailyGoal', 'contentMode', 'keymap',
   ]);
 
   restoreSettingsUI(data, els);
   updatePresetActive(data.wpm || 300);
-  displayStats(data.stats);
+  displayStats(data.stats, data.dailyGoal || 0);
+  setupKeymapUI(data.keymap || {});
 
   document.getElementById('clear-stats-btn').addEventListener('click', async () => {
     await browser.storage.local.remove('stats');
-    displayStats(null);
+    displayStats(null, 0);
     showStatus(t('statsCleared'));
   });
+
+  const exportStatsBtn = document.getElementById('export-stats-btn');
+  if (exportStatsBtn) {
+    exportStatsBtn.addEventListener('click', () => exportStatsCsv(data.stats));
+  }
 
   attachPersistListeners(els);
 
@@ -431,6 +740,8 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   renderReadingList();
+  renderTabBookmarks(activeTab);
+
   if (els.addToListBtn) {
     els.addToListBtn.addEventListener('click', () => addCurrentPageToList(activeTab));
   }

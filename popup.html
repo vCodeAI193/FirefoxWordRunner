@@ -151,6 +151,61 @@
           </label>
         </div>
 
+        <!-- Auto-pause at sentence end -->
+        <div class="setting-row">
+          <label class="checkbox-label">
+            <input type="checkbox" id="pause-at-sentence">
+            <span class="checkbox-custom"></span>
+            <span data-i18n="pauseAtSentenceLabel"></span>
+          </label>
+        </div>
+
+        <!-- Pause multipliers -->
+        <div class="setting-row setting-row--col">
+          <div class="setting-row-header">
+            <label for="sentence-pause-slider" class="setting-label" data-i18n="sentencePauseLabel"></label>
+            <output id="sentence-pause-display" for="sentence-pause-slider">0.6</output>
+            <span class="wpm-unit">×</span>
+          </div>
+          <input type="range" id="sentence-pause-slider" min="0" max="1.5" step="0.1" value="0.6"
+                 aria-valuemin="0" aria-valuemax="1.5" aria-valuenow="0.6">
+        </div>
+        <div class="setting-row setting-row--col">
+          <div class="setting-row-header">
+            <label for="comma-pause-slider" class="setting-label" data-i18n="commaPauseLabel"></label>
+            <output id="comma-pause-display" for="comma-pause-slider">0.3</output>
+            <span class="wpm-unit">×</span>
+          </div>
+          <input type="range" id="comma-pause-slider" min="0" max="0.8" step="0.1" value="0.3"
+                 aria-valuemin="0" aria-valuemax="0.8" aria-valuenow="0.3">
+        </div>
+        <div class="setting-row setting-row--col">
+          <div class="setting-row-header">
+            <label for="paragraph-pause-slider" class="setting-label" data-i18n="paragraphPauseLabel"></label>
+            <output id="paragraph-pause-display" for="paragraph-pause-slider">2.5</output>
+            <span class="wpm-unit">×</span>
+          </div>
+          <input type="range" id="paragraph-pause-slider" min="1.0" max="5.0" step="0.5" value="2.5"
+                 aria-valuemin="1.0" aria-valuemax="5.0" aria-valuenow="2.5">
+        </div>
+
+        <!-- Content extraction mode -->
+        <div class="setting-row">
+          <label for="content-mode-select" class="setting-label" data-i18n="contentModeLabel"></label>
+          <select id="content-mode-select" class="select-input">
+            <option value="smart"   data-i18n="contentModeSmart"></option>
+            <option value="article" data-i18n="contentModeArticle"></option>
+            <option value="minimal" data-i18n="contentModeMinimal"></option>
+          </select>
+        </div>
+
+        <!-- Daily goal -->
+        <div class="setting-row">
+          <label for="daily-goal-input" class="setting-label" data-i18n="dailyGoalLabel"></label>
+          <input type="number" id="daily-goal-input" min="0" max="50000" step="100" value="0" class="number-input">
+          <span class="wpm-unit" data-i18n="wordsLabel"></span>
+        </div>
+
         <!-- Export / Import settings -->
         <div class="setting-row setting-row--btns">
           <button id="export-settings-btn" class="rl-btn" type="button" data-i18n="exportSettings"></button>
@@ -172,7 +227,10 @@
     <details class="collapsible-section" id="stats-details">
       <summary class="collapsible-summary" data-i18n="statsLabel"></summary>
       <p id="stats-content" class="stats-content"></p>
-      <button id="clear-stats-btn" class="rl-btn" type="button" data-i18n="clearStats"></button>
+      <div class="setting-row--btns" style="margin-top:6px;display:flex;gap:6px;">
+        <button id="export-stats-btn" class="rl-btn" type="button" data-i18n="exportStatsCsv"></button>
+        <button id="clear-stats-btn" class="rl-btn" type="button" data-i18n="clearStats"></button>
+      </div>
     </details>
 
     <!-- Keyboard Shortcuts -->
@@ -185,6 +243,23 @@
         <li><span data-i18n="shortcutSkip"></span></li>
         <li><span data-i18n="shortcutSpeed"></span></li>
       </ul>
+    </details>
+
+    <!-- Bookmarks for current tab -->
+    <div id="tab-bookmarks" class="hidden"></div>
+
+    <!-- Key Bindings -->
+    <details class="collapsible-section" id="keymap-details">
+      <summary class="collapsible-summary" data-i18n="keymapLabel"></summary>
+      <div class="collapsible-content">
+        <div class="keymap-row"><span data-i18n="keymapPause"></span><button class="keymap-btn" type="button" data-action="pause">Space</button></div>
+        <div class="keymap-row"><span data-i18n="keymapStop"></span><button class="keymap-btn" type="button" data-action="stop">Escape</button></div>
+        <div class="keymap-row"><span data-i18n="keymapSkipFwd"></span><button class="keymap-btn" type="button" data-action="skipFwd">ArrowRight</button></div>
+        <div class="keymap-row"><span data-i18n="keymapSkipBwd"></span><button class="keymap-btn" type="button" data-action="skipBwd">ArrowLeft</button></div>
+        <div class="keymap-row"><span data-i18n="keymapSpeedUp"></span><button class="keymap-btn" type="button" data-action="speedUp">Equal</button></div>
+        <div class="keymap-row"><span data-i18n="keymapSpeedDn"></span><button class="keymap-btn" type="button" data-action="speedDn">Minus</button></div>
+        <button id="keymap-reset-btn" class="rl-btn" type="button" data-i18n="keymapReset"></button>
+      </div>
     </details>
 
   </main>

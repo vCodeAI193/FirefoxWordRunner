@@ -51,6 +51,24 @@
   box-shadow: 0 2px 12px rgba(0, 0, 0, 0.4);
 }
 
+#wr-mini-controls[data-theme="light"] {
+  background: rgba(255, 255, 248, 0.97);
+  color: #1a1a2e;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.15);
+}
+#wr-mini-controls[data-theme="light"] .wr-mini-progress,
+#wr-mini-controls[data-theme="light"] .wr-mini-time {
+  color: rgba(0, 0, 0, 0.5);
+}
+#wr-mini-controls[data-theme="light"] .wr-mini-btn {
+  background: rgba(0, 0, 0, 0.06);
+  border-color: rgba(0, 0, 0, 0.15);
+  color: #1a1a2e;
+}
+#wr-mini-controls[data-theme="light"] .wr-mini-btn:hover {
+  background: rgba(0, 0, 0, 0.12);
+}
+
 .wr-mini-progress {
   font-variant-numeric: tabular-nums;
   color: rgba(255, 255, 255, 0.5);

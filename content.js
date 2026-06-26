@@ -13,6 +13,15 @@ function t(key) {
 // State
 // ---------------------------------------------------------------------------
 
+const DEFAULT_KEYMAP = {
+  pause:   'Space',
+  stop:    'Escape',
+  skipFwd: 'ArrowRight',
+  skipBwd: 'ArrowLeft',
+  speedUp: 'Equal',
+  speedDn: 'Minus',
+};
+
 const WR = {
   // Session
   active: false,
@@ -29,6 +38,12 @@ const WR = {
   lastScheduledDuration: 200,
   sessionStartTime: null,
   lastStartParams: null,
+
+  // Feature settings
+  pauseAtSentence: false,
+  pauseOpts: { sentencePause: 0.6, commaPause: 0.3, paragraphPause: 2.5 },
+  contentMode: 'smart',
+  keymap: { ...DEFAULT_KEYMAP },
 
   // Overlay (Shadow DOM)
   shadowHost: null,
@@ -163,7 +178,18 @@ function createContentWalker(root) {
   );
 }
 
-function getContentRoot() {
+const MINIMAL_ANCESTORS = new Set(['P', 'H1', 'H2', 'H3', 'H4', 'H5', 'H6', 'BLOCKQUOTE', 'LI', 'PRE']);
+
+function getContentRoot(mode) {
+  if (mode === 'article') {
+    return (
+      document.querySelector('article') ||
+      document.querySelector('main') ||
+      document.querySelector('[role="main"]') ||
+      document.body
+    );
+  }
+  // 'smart' and 'minimal' use full heuristic root
   return (
     document.querySelector('article') ||
     document.querySelector('main') ||
@@ -176,7 +202,7 @@ function getContentRoot() {
   );
 }
 
-function extractText(source, customText) {
+function extractText(source, customText, contentMode = 'smart') {
   if (source === 'custom') return customText || '';
   if (source === 'selection') {
     const sel = window.getSelection();
@@ -184,7 +210,7 @@ function extractText(source, customText) {
     showPageToast(t('noSelectionFound'));
     return '';
   }
-  const walker = createContentWalker(getContentRoot());
+  const walker = createContentWalker(getContentRoot(contentMode));
   const chunks = [];
   let lastBlockParent = null;
   let node;
@@ -193,6 +219,7 @@ function extractText(source, customText) {
       const text = node.textContent.trim();
       if (!text) continue;
       const blockParent = getBlockAncestor(node);
+      if (contentMode === 'minimal' && !MINIMAL_ANCESTORS.has(blockParent?.tagName)) continue;
       if (lastBlockParent !== null && blockParent !== lastBlockParent) chunks.push(PARA_MARKER);
       chunks.push(text);
       lastBlockParent = blockParent;
@@ -202,7 +229,7 @@ function extractText(source, customText) {
 }
 
 // Builds words + DOM position map in one pass (for highlight mode).
-function extractWordsWithPositions(root) {
+function extractWordsWithPositions(root, contentMode = 'smart') {
   const words = [];
   const positions = [];
   const walker = createContentWalker(root);
@@ -213,6 +240,7 @@ function extractWordsWithPositions(root) {
   while ((node = walker.nextNode())) {
     if (node.nodeType !== Node.TEXT_NODE) continue;
     const blockParent = getBlockAncestor(node);
+    if (contentMode === 'minimal' && !MINIMAL_ANCESTORS.has(blockParent?.tagName)) continue;
     if (lastBlockParent !== null && blockParent !== lastBlockParent) {
       words.push(PARA_MARKER);
       positions.push({ node: null, start: 0, end: 0, marker: true });
@@ -283,27 +311,62 @@ async function clearSavedPosition() {
 async function saveStats(wordsRead) {
   if (wordsRead <= 0 || !WR.sessionStartTime) return;
   const elapsed = Date.now() - WR.sessionStartTime;
+  const todayStr = new Date().toISOString().slice(0, 10); // "YYYY-MM-DD"
   try {
     const data = await browser.storage.local.get('stats');
     const s = data.stats || {};
     const history = s.history || [];
     history.push({
-      date:      Date.now(),
-      url:       location.href,
-      title:     document.title || location.hostname,
+      date:       Date.now(),
+      url:        location.href,
+      title:      document.title || location.hostname,
       wordsRead,
-      wpm:       WR.wpm,
+      wpm:        WR.wpm,
       durationMs: elapsed,
     });
     if (history.length > 30) history.splice(0, history.length - 30);
+
+    // Streak and daily word tracking
+    const lastDate = s.lastReadDate;
+    let streakDays = s.streakDays || 0;
+    let todayWords = s.todayWords || 0;
+
+    if (lastDate === todayStr) {
+      todayWords += wordsRead;
+    } else {
+      const yesterday = new Date();
+      yesterday.setDate(yesterday.getDate() - 1);
+      const yesterdayStr = yesterday.toISOString().slice(0, 10);
+      streakDays = lastDate === yesterdayStr ? streakDays + 1 : 1;
+      todayWords = wordsRead;
+    }
+
     await browser.storage.local.set({
       stats: {
-        totalWords: (s.totalWords || 0) + wordsRead,
-        sessions:   (s.sessions   || 0) + 1,
-        totalMs:    (s.totalMs    || 0) + elapsed,
+        totalWords:   (s.totalWords || 0) + wordsRead,
+        sessions:     (s.sessions   || 0) + 1,
+        totalMs:      (s.totalMs    || 0) + elapsed,
         history,
+        lastReadDate: todayStr,
+        streakDays,
+        todayWords,
       },
     });
+  } catch { /* storage unavailable */ }
+}
+
+async function saveBookmark() {
+  const key = pageKey();
+  const idx = WR.wordIndex;
+  try {
+    const data = await browser.storage.local.get('readBookmarks');
+    const map = data.readBookmarks || {};
+    const list = map[key] || [];
+    list.push({ wordIndex: idx, ts: Date.now() });
+    if (list.length > 10) list.splice(0, list.length - 10);
+    map[key] = list;
+    await browser.storage.local.set({ readBookmarks: map });
+    showPageToast(tParam('toastBookmarkSaved', { index: idx }));
   } catch { /* storage unavailable */ }
 }
 
@@ -709,8 +772,13 @@ function applyTheme(theme, orpColor, fontSize, fontFamily) {
 }
 
 function reapplyThemeOnSchemeChange() {
-  if (!WR.active || WR.displayMode !== 'overlay' || !WR.shadowHost) return;
-  applyColorScheme(resolveTheme(WR.theme));
+  if (!WR.active) return;
+  const resolved = resolveTheme(WR.theme);
+  if (WR.displayMode === 'overlay' && WR.shadowHost) {
+    applyColorScheme(resolved);
+  } else if (WR.displayMode === 'highlight' && WR.highlightControls) {
+    WR.highlightControls.dataset.theme = resolved;
+  }
 }
 
 function showOverlay() { WR.shadowHost.classList.add('active'); }
@@ -907,7 +975,7 @@ function tick() {
   updateProgress();
 
   const now          = Date.now();
-  const wordDuration = getWordDuration(chunk[0], WR.intervalMs);
+  const wordDuration = getWordDuration(chunk[0], WR.intervalMs, WR.pauseOpts);
   let nextDelay      = wordDuration;
 
   if (WR.lastTickTime !== null) {
@@ -915,8 +983,15 @@ function tick() {
     nextDelay = Math.max(16, wordDuration - drift);
   }
 
-  WR.lastTickTime           = now;
-  WR.lastScheduledDuration  = wordDuration;
+  WR.lastTickTime          = now;
+  WR.lastScheduledDuration = wordDuration;
+
+  // Auto-pause at sentence end
+  if (WR.pauseAtSentence && chunk[0] !== PARA_MARKER && /[.!?…]$/.test(chunk[0])) {
+    WR.timeoutId = setTimeout(() => { if (WR.active && !WR.paused) pauseSession(); }, wordDuration);
+    return;
+  }
+
   scheduleNext(nextDelay);
 }
 
@@ -927,25 +1002,34 @@ function tick() {
 async function loadSessionSettings() {
   const s = await browser.storage.local.get([
     'wordsPerChunk', 'displayMode', 'fontSize', 'fontFamily', 'theme', 'orpColor', 'skipShortWords',
+    'pauseAtSentence', 'sentencePause', 'commaPause', 'paragraphPause', 'contentMode', 'keymap',
   ]);
   return {
-    wordsPerChunk: s.wordsPerChunk || 1,
-    displayMode:   s.displayMode   || 'overlay',
-    fontSize:      s.fontSize      || 48,
-    fontFamily:    s.fontFamily    || 'system',
-    theme:         s.theme         || 'dark',
-    orpColor:      s.orpColor      || '#ef5350',
-    skipShort:     !!s.skipShortWords,
+    wordsPerChunk:   s.wordsPerChunk || 1,
+    displayMode:     s.displayMode   || 'overlay',
+    fontSize:        s.fontSize      || 48,
+    fontFamily:      s.fontFamily    || 'system',
+    theme:           s.theme         || 'dark',
+    orpColor:        s.orpColor      || '#ef5350',
+    skipShort:       !!s.skipShortWords,
+    pauseAtSentence: !!s.pauseAtSentence,
+    pauseOpts: {
+      sentencePause:  typeof s.sentencePause  === 'number' ? s.sentencePause  : 0.6,
+      commaPause:     typeof s.commaPause     === 'number' ? s.commaPause     : 0.3,
+      paragraphPause: typeof s.paragraphPause === 'number' ? s.paragraphPause : 2.5,
+    },
+    contentMode: s.contentMode || 'smart',
+    keymap: { ...DEFAULT_KEYMAP, ...(s.keymap || {}) },
   };
 }
 
-function buildSessionWords(displayMode, source, customText, skipShort) {
+function buildSessionWords(displayMode, source, customText, skipShort, contentMode) {
   let words, positions;
 
   if (displayMode === 'highlight' && source === 'page') {
     const key = pageKey();
     if (!_posCache || _posCacheKey !== key) {
-      _posCache    = extractWordsWithPositions(getContentRoot());
+      _posCache    = extractWordsWithPositions(getContentRoot(contentMode), contentMode);
       _posCacheKey = key;
     }
     words     = _posCache.words;
@@ -959,7 +1043,7 @@ function buildSessionWords(displayMode, source, customText, skipShort) {
       positions = filtered.map(x => x.pos);
     }
   } else {
-    const raw = processWords(extractText(source, customText));
+    const raw = processWords(extractText(source, customText, contentMode));
     words     = skipShort ? raw.filter(w => w === PARA_MARKER || w.replace(/\W/g, '').length > 2) : raw;
     positions = null;
   }
@@ -981,7 +1065,7 @@ async function startSession(wpm, source, customText) {
     ? 'overlay'
     : cfg.displayMode;
 
-  const { words, positions } = buildSessionWords(displayMode, source, customText, cfg.skipShort);
+  const { words, positions } = buildSessionWords(displayMode, source, customText, cfg.skipShort, cfg.contentMode);
 
   if (words.length === 0) {
     showPageToast(t('noWordsFound'));
@@ -1000,6 +1084,10 @@ async function startSession(wpm, source, customText) {
   WR.lastTickTime          = null;
   WR.lastScheduledDuration = WR.intervalMs;
   WR.sessionStartTime      = Date.now();
+  WR.pauseAtSentence       = cfg.pauseAtSentence;
+  WR.pauseOpts             = cfg.pauseOpts;
+  WR.contentMode           = cfg.contentMode;
+  WR.keymap                = cfg.keymap;
 
   WR.wordIndex = source === 'page' ? await restorePosition(words) : 0;
   if (WR.wordIndex > 0) {
@@ -1015,6 +1103,9 @@ async function startSession(wpm, source, customText) {
     if (WR.highlightBox2) {
       WR.highlightBox2.style.background  = hexToRgba(cfg.orpColor, 0.18);
       WR.highlightBox2.style.borderColor = hexToRgba(cfg.orpColor, 0.45);
+    }
+    if (WR.highlightControls) {
+      WR.highlightControls.dataset.theme = resolveTheme(cfg.theme);
     }
   } else {
     buildOverlay();
@@ -1040,7 +1131,7 @@ async function startSession(wpm, source, customText) {
   WR.wordIndex += firstChunk.length;
   updateProgress();
 
-  const firstDuration      = getWordDuration(firstChunk[0], WR.intervalMs);
+  const firstDuration      = getWordDuration(firstChunk[0], WR.intervalMs, WR.pauseOpts);
   WR.lastTickTime          = Date.now();
   WR.lastScheduledDuration = firstDuration;
   scheduleNext(firstDuration);
@@ -1180,17 +1271,19 @@ function handleKeyDown(e) {
                       document.getElementById('wr-mini-controls');
   if (!WR.active && !overlayOpen) return;
 
-  if (e.code === 'Space' && !e.ctrlKey && !e.altKey && !e.metaKey) {
+  const km = WR.keymap;
+
+  if (e.code === km.pause && !e.ctrlKey && !e.altKey && !e.metaKey) {
     e.preventDefault();
     e.stopPropagation();
     if (WR.active) { if (WR.paused) resumeSession(); else pauseSession(); }
-  } else if (e.code === 'Escape') {
+  } else if (e.code === km.stop) {
     e.preventDefault();
     e.stopPropagation();
     stopSession();
-  } else if ((e.code === 'ArrowRight' || e.code === 'ArrowLeft') && WR.active) {
+  } else if ((e.code === km.skipFwd || e.code === km.skipBwd) && WR.active) {
     e.preventDefault();
-    WR.wordIndex = e.code === 'ArrowRight'
+    WR.wordIndex = e.code === km.skipFwd
       ? Math.min(WR.wordIndex + 10, WR.words.length - 1)
       : Math.max(0, WR.wordIndex - 10);
     if (WR.paused) {
@@ -1199,7 +1292,7 @@ function handleKeyDown(e) {
       else renderChunkInOverlay(chunk);
       updateProgress();
     }
-  } else if ((e.key === '+' || e.key === '=') && WR.active) {
+  } else if (e.code === km.speedUp && WR.active) {
     e.preventDefault();
     const val = Math.min(1000, WR.wpm + 25);
     WR.wpm = val;
@@ -1209,7 +1302,7 @@ function handleKeyDown(e) {
       if (sl) { sl.value = val; WR.shadowRoot.querySelector('.wr-wpm-val').textContent = val; }
     }
     browser.storage.local.set({ wpm: val });
-  } else if (e.key === '-' && WR.active) {
+  } else if (e.code === km.speedDn && WR.active) {
     e.preventDefault();
     const val = Math.max(100, WR.wpm - 25);
     WR.wpm = val;
@@ -1219,6 +1312,9 @@ function handleKeyDown(e) {
       if (sl) { sl.value = val; WR.shadowRoot.querySelector('.wr-wpm-val').textContent = val; }
     }
     browser.storage.local.set({ wpm: val });
+  } else if ((e.key === 'b' || e.key === 'B') && WR.active) {
+    e.preventDefault();
+    saveBookmark();
   } else if (e.code === 'Tab' && WR.shadowRoot && WR.active) {
     e.preventDefault();
     const focusables = Array.from(
