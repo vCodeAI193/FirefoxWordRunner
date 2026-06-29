@@ -1096,7 +1096,7 @@ async function loadSessionSettings() {
   const s = await getSettings([
     'wordsPerChunk', 'displayMode', 'fontSize', 'fontFamily', 'theme', 'orpColor', 'skipShortWords',
     'pauseAtSentence', 'sentencePause', 'commaPause', 'paragraphPause', 'contentMode', 'keymap',
-    'dimPage', 'bionicReading', 'overlayPosition',
+    'dimPage', 'bionicReading', 'overlayPosition', 'overlayBgColor',
   ]);
   return {
     wordsPerChunk:   s.wordsPerChunk || 1,
@@ -1117,6 +1117,7 @@ async function loadSessionSettings() {
     dimPage:       !!s.dimPage,
     bionicReading: !!s.bionicReading,
     overlayPosition: s.overlayPosition || 'center',
+    overlayBgColor: s.overlayBgColor || '#0a0a19',
   };
 }
 
@@ -1188,6 +1189,7 @@ async function startSession(wpm, source, customText) {
   WR.dimPage               = cfg.dimPage;
   WR.bionicReading         = cfg.bionicReading;
   WR.overlayPosition       = cfg.overlayPosition;
+  WR.overlayBgColor        = cfg.overlayBgColor;
 
   WR.wordIndex = source === 'page' ? await restorePosition(words) : 0;
   if (WR.wordIndex > 0) {
@@ -1224,6 +1226,9 @@ async function startSession(wpm, source, customText) {
     const prevRestart = WR.shadowRoot?.querySelector('.wr-restart-btn');
     if (prevRestart) prevRestart.style.display = 'none';
     applyTheme(cfg.theme, cfg.orpColor, cfg.fontSize, cfg.fontFamily);
+    if (WR.overlayBgColor && WR.shadowHost) {
+      WR.shadowHost.style.setProperty('--wr-bg', hexToRgba(WR.overlayBgColor, 0.93));
+    }
     showOverlay();
     const center = WR.shadowRoot?.querySelector('.wr-center');
     if (center) {

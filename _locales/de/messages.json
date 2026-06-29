@@ -346,5 +346,8 @@
   },
   "posBottomRight": {
     "message": "↘ Unten-rechts"
+  },
+  "overlayBgColorLabel": {
+    "message": "Overlay-Hintergrundfarbe"
   }
 }

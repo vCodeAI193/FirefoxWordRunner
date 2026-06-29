@@ -48,7 +48,7 @@ const SETTINGS_KEYS = [
   'theme', 'orpColor', 'skipShortWords',
   'pauseAtSentence', 'sentencePause', 'commaPause', 'paragraphPause',
   'dailyGoal', 'contentMode', 'keymap',
-  'dimPage', 'bionicReading', 'overlayPosition',
+  'dimPage', 'bionicReading', 'overlayPosition', 'overlayBgColor',
 ];
 
 function saveSetting(obj) {
@@ -507,6 +507,12 @@ function restoreSettingsUI(data, els) {
   if (els.overlayPositionRow) {
     els.overlayPositionRow.classList.toggle('hidden', data.displayMode === 'highlight');
   }
+  if (els.overlayBgColorRow) {
+    els.overlayBgColorRow.classList.toggle('hidden', data.displayMode === 'highlight');
+  }
+  if (els.overlayBgColor && data.overlayBgColor) {
+    els.overlayBgColor.value = data.overlayBgColor;
+  }
 
   if (data.fontSize) {
     els.fontSlider.value = data.fontSize;
@@ -589,11 +595,19 @@ function attachPersistListeners(els) {
       if (els.overlayPositionRow) {
         els.overlayPositionRow.classList.toggle('hidden', r.value !== 'overlay');
       }
+      if (els.overlayBgColorRow) {
+        els.overlayBgColorRow.classList.toggle('hidden', r.value !== 'overlay');
+      }
     }));
 
   document.querySelectorAll('input[name="overlayPosition"]').forEach(r =>
     r.addEventListener('change', () =>
       saveSetting({ overlayPosition: r.value })));
+
+  if (els.overlayBgColor) {
+    els.overlayBgColor.addEventListener('input', () =>
+      saveSetting({ overlayBgColor: els.overlayBgColor.value }));
+  }
 
   document.querySelectorAll('input[name="wordsPerChunk"]').forEach(r =>
     r.addEventListener('change', () =>
@@ -741,6 +755,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     contentModeSelect:    document.getElementById('content-mode-select'),
     dailyGoalInput:       document.getElementById('daily-goal-input'),
     overlayPositionRow:   document.getElementById('overlay-position-row'),
+    overlayBgColorRow:    document.getElementById('overlay-bg-color-row'),
+    overlayBgColor:       document.getElementById('overlay-bg-color'),
   };
 
   // Load settings from sync (with local fallback) + stats from local

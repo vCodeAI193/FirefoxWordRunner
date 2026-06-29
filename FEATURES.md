@@ -111,8 +111,12 @@ Anforderungen werden pro Feature in einem eigenen Abschnitt ergänzt.
 ### F-012 · Benutzerdefinierte Hintergrundfarbe
 **Beschreibung:** Neben den Themes Dark/Light/Auto kann der Nutzer eine eigene Hintergrundfarbe für den Overlay-Modus frei wählen.  
 **Effort:** S  
+**Status:** [x] Fertig  
 **Anforderungen:**
-- TBD
+- [x] Color-Input im Popup (nur im Overlay-Modus)
+- [x] Storage key: `overlayBgColor` (default: rgba)
+- [x] Validator für hex oder rgba
+- [x] CSS Variable: --wr-bg-custom auf .wr-overlay anwenden
 
 ---
 

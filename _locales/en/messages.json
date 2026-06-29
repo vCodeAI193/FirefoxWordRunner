@@ -346,5 +346,8 @@
   },
   "posBottomRight": {
     "message": "↘ Bottom-right"
+  },
+  "overlayBgColorLabel": {
+    "message": "Overlay background color"
   }
 }
