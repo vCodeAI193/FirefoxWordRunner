@@ -20,7 +20,10 @@ Anforderungen werden pro Feature in einem eigenen Abschnitt ergänzt.
 **Beschreibung:** Das nächste Wort (oder die nächsten N Wörter) wird kleiner und ausgegraut unter dem aktuellen Wort eingeblendet.  
 **Effort:** S  
 **Anforderungen:**
-- TBD
+- [ ] Neue CSS-Klasse `.wr-preview-word` für kleinere, hellere Schrift (z. B. 60% Größe, 0.5 Opazität)
+- [ ] In `renderChunkInOverlay()`: vor Animation das nächste Wort der queue anzeigen
+- [ ] Optional: Checkbox in popup.js "Nächstes Wort anzeigen" (toggle)
+- [ ] Standard: an im Overlay
 
 ---
 

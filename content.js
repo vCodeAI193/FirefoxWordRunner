@@ -560,6 +560,7 @@ const OVERLAY_CSS = `
 .wr-word-focus { color: var(--wr-orp, #ef5350); font-weight: 700; }
 .wr-word-right { color: var(--wr-text, #e8eaf6); min-width: 8ch; text-align: left; display: inline-block; }
 .wr-word-two   { color: var(--wr-text, #e8eaf6); opacity: 0.75; }
+.wr-preview-word { display: block; font-size: 60%; opacity: 0.4; margin-top: 6px; color: var(--wr-text, #e8eaf6); }
 
 @keyframes wr-flash {
   0%   { opacity: 0.35; transform: scale(0.96); }
@@ -659,6 +660,7 @@ const OVERLAY_HTML = `
     <div class="wr-guide wr-guide-top"></div>
     <div class="wr-word-display" role="status" aria-live="off" aria-atomic="true">
       <span class="wr-word-left"></span><span class="wr-word-focus"></span><span class="wr-word-right"></span><span class="wr-word-two"></span>
+      <div class="wr-preview-word" aria-label="Next word preview"></div>
     </div>
     <div class="wr-guide wr-guide-bottom"></div>
   </div>
@@ -983,6 +985,7 @@ function renderChunkInOverlay(chunk) {
     WR.shadowRoot.querySelector('.wr-word-focus').textContent = '';
     WR.shadowRoot.querySelector('.wr-word-right').textContent = '';
     WR.shadowRoot.querySelector('.wr-word-two').textContent   = '';
+    WR.shadowRoot.querySelector('.wr-preview-word').textContent = '';
     return;
   }
 
@@ -1002,6 +1005,9 @@ function renderChunkInOverlay(chunk) {
 
   const second = chunk[1] && chunk[1] !== PARA_MARKER ? chunk[1] : '';
   WR.shadowRoot.querySelector('.wr-word-two').textContent = second ? ' ' + second : '';
+
+  const third = chunk[2] && chunk[2] !== PARA_MARKER ? chunk[2] : (WR.words[WR.wordIndex + 2] || '');
+  WR.shadowRoot.querySelector('.wr-preview-word').textContent = third ? `${third}` : '';
 
   el.classList.remove('animating');
   void el.offsetWidth; // force reflow to restart animation
