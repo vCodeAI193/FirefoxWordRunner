@@ -1026,7 +1026,7 @@ function updateProgress() {
   }
   if (!WR.shadowRoot) return;
   WR.shadowRoot.querySelector('.wr-progress-fill').style.width = `${pct.toFixed(1)}%`;
-  WR.shadowRoot.querySelector('.wr-progress-text').textContent = `${current} / ${total}`;
+  WR.shadowRoot.querySelector('.wr-progress-text').textContent = `${current} / ${total} (${pct.toFixed(0)}%)`;
   WR.shadowRoot.querySelector('.wr-time-remaining').textContent = timeStr;
 }
 

@@ -62,8 +62,11 @@ Anforderungen werden pro Feature in einem eigenen Abschnitt ergänzt.
 ### F-007 · Fortschrittsprozentzahl
 **Beschreibung:** Neben der aktuellen Wortposition (z. B. „240 / 1200") wird der prozentuale Fortschritt angezeigt (z. B. „20 %").  
 **Effort:** S  
+**Status:** [x] Fertig  
 **Anforderungen:**
-- TBD
+- [x] Prozentberechnung: `(current / total) * 100`
+- [x] Display: "240 / 1200 (20%)" in `.wr-progress-text`
+- [x] Nur im Overlay-Modus (nicht Highlight)
 
 ---
 
