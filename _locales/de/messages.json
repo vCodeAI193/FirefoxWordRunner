@@ -319,5 +319,14 @@
   },
   "bionicReadingLabel": {
     "message": "Bionic-Lesen (erste Buchstaben fett)"
+  },
+  "clipboardPaste": {
+    "message": "Aus Zwischenablage einfügen"
+  },
+  "clipboardEmpty": {
+    "message": "Zwischenablage ist leer"
+  },
+  "clipboardError": {
+    "message": "Zwischenablage konnte nicht gelesen werden. Bitte überprüfen Sie die Berechtigungen."
   }
 }

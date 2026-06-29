@@ -319,5 +319,14 @@
   },
   "bionicReadingLabel": {
     "message": "Bionic reading (bold first letters)"
+  },
+  "clipboardPaste": {
+    "message": "Paste from clipboard"
+  },
+  "clipboardEmpty": {
+    "message": "Clipboard is empty"
+  },
+  "clipboardError": {
+    "message": "Unable to read clipboard. Please check permissions."
   }
 }

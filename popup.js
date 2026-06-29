@@ -803,6 +803,26 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   if (els.startBtn.disabled) return;
 
+  // ── Clipboard paste button ──
+  const clipboardBtn = document.getElementById('clipboard-paste-btn');
+  if (clipboardBtn && !els.startBtn.disabled) {
+    clipboardBtn.addEventListener('click', async () => {
+      try {
+        const text = await navigator.clipboard.readText();
+        if (text.trim()) {
+          els.radioCustom.checked = true;
+          els.customSection.classList.remove('hidden');
+          els.customText.value = text;
+          showStatus(t('clipboardPaste'));
+        } else {
+          showStatus(t('clipboardEmpty'), 'error');
+        }
+      } catch {
+        showStatus(t('clipboardError'), 'error');
+      }
+    });
+  }
+
   // ── Start / pause / resume ──
   els.startBtn.addEventListener('click', async () => {
     if (!activeTab) return;

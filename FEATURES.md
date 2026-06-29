@@ -197,8 +197,12 @@ Anforderungen werden pro Feature in einem eigenen Abschnitt ergänzt.
 ### F-023 · Zwischenablage lesen
 **Beschreibung:** Ein Schaltfläche im Popup liest direkt den Inhalt der Zwischenablage aus und startet die Lesesitzung damit (kein manuelles Einfügen nötig).  
 **Effort:** S  
+**Status:** [x] Fertig  
 **Anforderungen:**
-- TBD
+- [x] Button "Paste from clipboard" unter Custom-Text-Textarea
+- [x] navigator.clipboard.readText() API
+- [x] Text in Textfield einfügen + custom-Quelle auswählen
+- [x] Fehlerbehandlung (leere Clipboard, keine Berechtigung)
 
 ---
 
