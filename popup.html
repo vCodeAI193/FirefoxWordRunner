@@ -91,6 +91,18 @@
           </div>
         </div>
 
+        <!-- Overlay position (only show if overlay mode) -->
+        <div class="setting-row" id="overlay-position-row">
+          <span id="overlay-pos-label" class="setting-label" data-i18n="overlayPositionLabel"></span>
+          <div class="toggle-group" role="radiogroup" aria-labelledby="overlay-pos-label">
+            <label class="toggle-label"><input type="radio" name="overlayPosition" value="top-left"> <span data-i18n="posTopLeft"></span></label>
+            <label class="toggle-label"><input type="radio" name="overlayPosition" value="top-center"> <span data-i18n="posTopCenter"></span></label>
+            <label class="toggle-label"><input type="radio" name="overlayPosition" value="center" checked> <span data-i18n="posCenter"></span></label>
+            <label class="toggle-label"><input type="radio" name="overlayPosition" value="bottom-center"> <span data-i18n="posBottomCenter"></span></label>
+            <label class="toggle-label"><input type="radio" name="overlayPosition" value="bottom-right"> <span data-i18n="posBottomRight"></span></label>
+          </div>
+        </div>
+
         <!-- Words per chunk -->
         <div class="setting-row">
           <span id="words-chunk-label" class="setting-label" data-i18n="wordsPerChunkLabel"></span>

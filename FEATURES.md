@@ -99,8 +99,12 @@ Anforderungen werden pro Feature in einem eigenen Abschnitt ergänzt.
 ### F-011 · Positions-Voreinstellungen für Overlay
 **Beschreibung:** Nutzer können das Overlay an eine von fünf vordefinierten Positionen andocken: oben-links, oben-Mitte, Mitte, unten-Mitte, unten-rechts.  
 **Effort:** S  
+**Status:** [x] Fertig  
 **Anforderungen:**
-- TBD
+- [x] Fünf Position-Buttons oder Dropdown in Popup-Einstellungen
+- [x] CSS Klassen für Position (e.g., `.wr-pos-top-left`, `.wr-pos-center`, etc.)
+- [x] Storage key: `overlayPosition` (default: 'center')
+- [x] Update im Overlay-HTML: `<div class="wr-overlay wr-pos-${position}">`
 
 ---
 

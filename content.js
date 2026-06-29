@@ -538,6 +538,12 @@ const OVERLAY_CSS = `
   gap: 10px;
 }
 
+.wr-center.wr-pos-top-left    { align-items: flex-start; justify-content: flex-start; }
+.wr-center.wr-pos-top-center  { align-items: flex-start; justify-content: center; }
+.wr-center.wr-pos-center      { align-items: center; justify-content: center; }
+.wr-center.wr-pos-bottom-center { align-items: flex-end; justify-content: center; }
+.wr-center.wr-pos-bottom-right  { align-items: flex-end; justify-content: flex-end; }
+
 .wr-guide {
   width: 2px;
   height: 18px;
@@ -1090,7 +1096,7 @@ async function loadSessionSettings() {
   const s = await getSettings([
     'wordsPerChunk', 'displayMode', 'fontSize', 'fontFamily', 'theme', 'orpColor', 'skipShortWords',
     'pauseAtSentence', 'sentencePause', 'commaPause', 'paragraphPause', 'contentMode', 'keymap',
-    'dimPage', 'bionicReading',
+    'dimPage', 'bionicReading', 'overlayPosition',
   ]);
   return {
     wordsPerChunk:   s.wordsPerChunk || 1,
@@ -1110,6 +1116,7 @@ async function loadSessionSettings() {
     keymap:        { ...DEFAULT_KEYMAP, ...(s.keymap || {}) },
     dimPage:       !!s.dimPage,
     bionicReading: !!s.bionicReading,
+    overlayPosition: s.overlayPosition || 'center',
   };
 }
 
@@ -1180,6 +1187,7 @@ async function startSession(wpm, source, customText) {
   WR.keymap                = cfg.keymap;
   WR.dimPage               = cfg.dimPage;
   WR.bionicReading         = cfg.bionicReading;
+  WR.overlayPosition       = cfg.overlayPosition;
 
   WR.wordIndex = source === 'page' ? await restorePosition(words) : 0;
   if (WR.wordIndex > 0) {
@@ -1217,6 +1225,11 @@ async function startSession(wpm, source, customText) {
     if (prevRestart) prevRestart.style.display = 'none';
     applyTheme(cfg.theme, cfg.orpColor, cfg.fontSize, cfg.fontFamily);
     showOverlay();
+    const center = WR.shadowRoot?.querySelector('.wr-center');
+    if (center) {
+      center.className = center.className.replace(/\bwr-pos-\S+/g, '');
+      center.classList.add(`wr-pos-${WR.overlayPosition}`);
+    }
     if (WR.shadowRoot) {
       WR.shadowRoot.querySelector('.wr-wpm-val').textContent = wpm;
       WR.shadowRoot.querySelector('.wr-wpm-slider').value    = wpm;

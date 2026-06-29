@@ -48,7 +48,7 @@ const SETTINGS_KEYS = [
   'theme', 'orpColor', 'skipShortWords',
   'pauseAtSentence', 'sentencePause', 'commaPause', 'paragraphPause',
   'dailyGoal', 'contentMode', 'keymap',
-  'dimPage', 'bionicReading',
+  'dimPage', 'bionicReading', 'overlayPosition',
 ];
 
 function saveSetting(obj) {
@@ -500,6 +500,13 @@ function restoreSettingsUI(data, els) {
 
   if (data.wordsPerChunk === 2) document.getElementById('radio-two-words').checked = true;
   if (data.displayMode === 'highlight') document.getElementById('radio-highlight').checked = true;
+  if (data.overlayPosition) {
+    const posRadio = document.querySelector(`input[name="overlayPosition"][value="${data.overlayPosition}"]`);
+    if (posRadio) posRadio.checked = true;
+  }
+  if (els.overlayPositionRow) {
+    els.overlayPositionRow.classList.toggle('hidden', data.displayMode === 'highlight');
+  }
 
   if (data.fontSize) {
     els.fontSlider.value = data.fontSize;
@@ -577,7 +584,16 @@ function attachPersistListeners(els) {
     saveSetting({ skipShortWords: els.skipShortWords.checked }));
 
   document.querySelectorAll('input[name="displayMode"]').forEach(r =>
-    r.addEventListener('change', () => saveSetting({ displayMode: r.value })));
+    r.addEventListener('change', () => {
+      saveSetting({ displayMode: r.value });
+      if (els.overlayPositionRow) {
+        els.overlayPositionRow.classList.toggle('hidden', r.value !== 'overlay');
+      }
+    }));
+
+  document.querySelectorAll('input[name="overlayPosition"]').forEach(r =>
+    r.addEventListener('change', () =>
+      saveSetting({ overlayPosition: r.value })));
 
   document.querySelectorAll('input[name="wordsPerChunk"]').forEach(r =>
     r.addEventListener('change', () =>
@@ -724,6 +740,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     paragraphPauseSlider: document.getElementById('paragraph-pause-slider'),
     contentModeSelect:    document.getElementById('content-mode-select'),
     dailyGoalInput:       document.getElementById('daily-goal-input'),
+    overlayPositionRow:   document.getElementById('overlay-position-row'),
   };
 
   // Load settings from sync (with local fallback) + stats from local

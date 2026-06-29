@@ -328,5 +328,23 @@
   },
   "clipboardError": {
     "message": "Zwischenablage konnte nicht gelesen werden. Bitte überprüfen Sie die Berechtigungen."
+  },
+  "overlayPositionLabel": {
+    "message": "Overlay-Position"
+  },
+  "posTopLeft": {
+    "message": "↖ Oben-links"
+  },
+  "posTopCenter": {
+    "message": "⬆ Oben"
+  },
+  "posCenter": {
+    "message": "⬤ Mitte"
+  },
+  "posBottomCenter": {
+    "message": "⬇ Unten"
+  },
+  "posBottomRight": {
+    "message": "↘ Unten-rechts"
   }
 }

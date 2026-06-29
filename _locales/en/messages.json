@@ -328,5 +328,23 @@
   },
   "clipboardError": {
     "message": "Unable to read clipboard. Please check permissions."
+  },
+  "overlayPositionLabel": {
+    "message": "Overlay position"
+  },
+  "posTopLeft": {
+    "message": "↖ Top-left"
+  },
+  "posTopCenter": {
+    "message": "⬆ Top"
+  },
+  "posCenter": {
+    "message": "⬤ Center"
+  },
+  "posBottomCenter": {
+    "message": "⬇ Bottom"
+  },
+  "posBottomRight": {
+    "message": "↘ Bottom-right"
   }
 }
